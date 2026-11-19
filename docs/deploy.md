@@ -106,7 +106,7 @@ for the project owner** — no agent creates accounts on the owner's behalf.
    - `NFT_CHAIN_ID=56`, `NFT_CONTRACT_ADDRESS=<mainnet address>`,
      `AGENT_ID_REGISTRY_ADDRESS=0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`
    - `NFT_DEPLOY_BLOCK=<mainnet deploy block>` (step 7)
-   - `NFT_IMAGE_URL=ipfs://<IMAGE_CID>/genesis-seal.png` (same image
+   - `NFT_IMAGE_URL=ipfs://<IMAGE_CID>/genesis-seal.webp` (same image
      URI as the pinned metadata)
    - `AUTHORIZED_CAMPAIGNS=001` (default; only Campaign 001 accepts
      submissions/reviews/vouchers — an empty value disables ALL

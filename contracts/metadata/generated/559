@@ -1,0 +1,17 @@
+{
+  "attributes": [
+    {
+      "trait_type": "Campaign",
+      "value": "001 — The Genesis Quest"
+    },
+    {
+      "trait_type": "Collection",
+      "value": "Genesis Seal"
+    }
+  ],
+  "description": "AgentRitual Genesis Seal — minted by completing Campaign 001 with a Binance Agent ID. Max supply 1,000, one per wallet.",
+  "external_url": "",
+  "image": "ipfs://<IMAGE_CID>/genesis-seal.webp",
+  "name": "AgentRitual Genesis Seal #559",
+  "note": "Final Genesis Seal metadata, pinned to IPFS for the mainnet launch (Campaign 001)."
+}

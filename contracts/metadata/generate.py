@@ -16,14 +16,14 @@ before the mainnet launch so the two sources agree.
 
 Pinning is TWO steps (see docs/metadata.md) because the image URI
 contains the image file's own IPFS CID:
-  1. Pin genesis-seal.png FIRST -> IMAGE_CID.
-  2. Run this script with --image-uri ipfs://<IMAGE_CID>/genesis-seal.png,
+  1. Pin genesis-seal.webp FIRST -> IMAGE_CID.
+  2. Run this script with --image-uri ipfs://<IMAGE_CID>/genesis-seal.webp,
      then pin the generated folder -> METADATA_CID.
      baseURI for the deploy is ipfs://<METADATA_CID>/.
 
 Usage:
   python3 contracts/metadata/generate.py \
-      --image-uri ipfs://<IMAGE_CID>/genesis-seal.png \
+      --image-uri ipfs://<IMAGE_CID>/genesis-seal.webp \
       --out-dir contracts/metadata/generated
   # first 10 tokens only:
   python3 contracts/metadata/generate.py --end 9 --out-dir contracts/metadata/generated
@@ -43,7 +43,7 @@ CAMPAIGN_ID = "001"
 CAMPAIGN_LABEL = "001 — The Genesis Quest"
 MAX_TOKEN_ID = 999  # Campaign 001 mints token IDs 0–999.
 
-PLACEHOLDER_IMAGE_URI = "ipfs://<IMAGE_CID>/genesis-seal.png"
+PLACEHOLDER_IMAGE_URI = "ipfs://<IMAGE_CID>/genesis-seal.webp"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_PATH = os.path.join(HERE, "template.json")
@@ -77,7 +77,7 @@ def main() -> int:
         "--image-uri",
         default=PLACEHOLDER_IMAGE_URI,
         help="IPFS URI of the seal artwork, e.g. "
-        "ipfs://<IMAGE_CID>/genesis-seal.png (default: placeholder)",
+        "ipfs://<IMAGE_CID>/genesis-seal.webp (default: placeholder)",
     )
     parser.add_argument(
         "--start", type=int, default=0, help="First token ID (default 0)"
@@ -134,7 +134,7 @@ def main() -> int:
     if args.image_uri == PLACEHOLDER_IMAGE_URI:
         print(
             "WARNING: placeholder image URI — pin the artwork first, then "
-            "re-run with --image-uri ipfs://<IMAGE_CID>/genesis-seal.png "
+            "re-run with --image-uri ipfs://<IMAGE_CID>/genesis-seal.webp "
             "before pinning the metadata folder."
         )
     return 0

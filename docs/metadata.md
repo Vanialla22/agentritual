@@ -34,10 +34,10 @@ returns `image: null` until `NFT_IMAGE_URL` is set. The metadata
 references the artwork as:
 
 ```
-ipfs://<IMAGE_CID>/genesis-seal.png
+ipfs://<IMAGE_CID>/genesis-seal.webp
 ```
 
-The exact art filename is the owner's choice (`genesis-seal.png` is
+The exact art filename is the owner's choice (`genesis-seal.webp` is
 the placeholder name used here); whatever the final file is called,
 the `image` URI in the metadata must point at the pinned file.
 
@@ -49,12 +49,12 @@ FIRST, because the metadata files contain the image file's own CID:
 ### Step 1 — Pin the artwork
 
 1. Take the final Genesis Seal artwork file (e.g.
-   `genesis-seal.png`).
+   `genesis-seal.webp`).
 2. Upload / pin it to IPFS (Pinata, web3.storage, `ipfs add`, or any
    pinning service the owner already uses — the owner picks the
    service; no new account is created by an agent).
 3. Record the returned CID as `IMAGE_CID`. The artwork URI is now:
-   `ipfs://<IMAGE_CID>/genesis-seal.png`
+   `ipfs://<IMAGE_CID>/genesis-seal.webp`
 
 ### Step 2 — Regenerate + pin the metadata folder
 
@@ -63,7 +63,7 @@ FIRST, because the metadata files contain the image file's own CID:
    and MUST be regenerated before pinning):
    ```bash
    python3 contracts/metadata/generate.py \
-     --image-uri ipfs://<IMAGE_CID>/genesis-seal.png \
+     --image-uri ipfs://<IMAGE_CID>/genesis-seal.webp \
      --out-dir contracts/metadata/generated
    ```
    Verify determinism: run it twice — the printed sha256 must match.
@@ -79,7 +79,7 @@ FIRST, because the metadata files contain the image file's own CID:
 - Deploy the contract with `BASE_URI=ipfs://<METADATA_CID>/`
   (trailing slash — `tokenURI(42)` becomes
   `ipfs://<METADATA_CID>/42`). See `contracts/script/DeployMainnet.s.sol`.
-- Set the API env `NFT_IMAGE_URL=ipfs://<IMAGE_CID>/genesis-seal.png`
+- Set the API env `NFT_IMAGE_URL=ipfs://<IMAGE_CID>/genesis-seal.webp`
   so `GET /metadata/:id` serves the same image as the pinned files.
 - **Do not change baseURI after launch** (audit L-1): the owner can
   rewrite all token metadata at any time via `setBaseURI`, so the

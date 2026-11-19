@@ -10,7 +10,7 @@ const MAX_TOKEN_ID = 100_000;
 
 /**
  * GET /metadata/:id — ERC-721 token metadata for the Genesis Seal.
- * Final artwork ships with the contract (Phase 2); until NFT_IMAGE_URL is
+ * Final artwork is pinned to IPFS for the mainnet launch; until NFT_IMAGE_URL is
  * set, `image` is null rather than a fake URL.
  */
 export function registerMetadataRoutes(app: FastifyInstance) {
@@ -37,7 +37,7 @@ export function registerMetadataRoutes(app: FastifyInstance) {
       external_url: "",
       image: config.nftImageUrl || null,
       name: `AgentRitual Genesis Seal #${tokenId}`,
-      note: "Final Genesis Seal artwork ships with the contract (Phase 2).",
+      note: "Final Genesis Seal metadata, pinned to IPFS for the mainnet launch (Campaign 001).",
     };
   });
 }
