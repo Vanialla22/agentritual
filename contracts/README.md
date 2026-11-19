@@ -1,4 +1,13 @@
-# contracts/ — Foundry skeleton (Phase 1)
+# contracts/ — Foundry (Phase 2 ✅ complete, testnet deploy BLOCKED on faucet)
+
+**Contract code + tests: DONE.** `AgentRitualNFT.sol` + `MockAgentIdRegistry.sol`
+written, `forge test` 14/14 PASS (12 unit+fuzz, 2 invariants @ 128 runs /
+2,560 calls). Deploy script validated by dry-run simulation on chain 97
+(est. 4,062,384 gas ≈ 0.0004062384 tBNB). **Testnet broadcast NOT done —
+BLOCKED: all public tBNB faucets require a captcha or social login, and
+the deployer wallet (0x07dC8Cdc8AaDF988cB1D54EC9D25a9F27c5527b2) holds
+0 tBNB.** See `~/workspace/goals/agentritual-binance-agent-id-hackathon/files/phase-2-report.md`
+for the exact blocker + unblock steps. No mainnet activity, no real funds.
 
 **No contract code exists yet.** The full contract is written, tested, and
 deployed in **Phase 2**. This directory only holds the toolchain setup so
