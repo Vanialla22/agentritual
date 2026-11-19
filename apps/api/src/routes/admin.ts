@@ -475,8 +475,14 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db) {
         contractAddress: config.nftContractAddress,
         fromBlock,
         knownTest: knownTestMints,
+        latestBlock,
         matched,
         unmatched,
+        // M-1 fix: when NFT_DEPLOY_BLOCK is unset (0), the scan covered
+        // only the trailing 5,000 blocks. windowTruncated flags that so
+        // a "0 anomalies" answer can never be read as a clean bill
+        // without seeing the window.
+        windowTruncated: config.nftDeployBlock <= 0,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "RPC error";

@@ -32,6 +32,13 @@ export async function buildServer() {
         "Set it to the admin wallet address to block self-review.",
     );
   }
+  if (config.nftContractAddress && config.nftDeployBlock <= 0) {
+    app.log.warn(
+      "NFT_DEPLOY_BLOCK is not set — GET /api/admin/mint-audit scans " +
+        "only the trailing 5,000 blocks (windowTruncated: true). Set it " +
+        "to the NFT contract's deployment block for a full audit.",
+    );
+  }
   if (!config.adminPasswordHash || !config.adminSessionSecret) {
     app.log.warn(
       "admin login is not fully configured (ADMIN_PASSWORD_HASH / " +

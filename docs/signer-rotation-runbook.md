@@ -22,7 +22,10 @@ moment rotation lands on-chain, by design: the contract only trusts
    curl -H "Authorization: Bearer <ADMIN_TOKEN>" <API>/api/admin/mint-audit
    ```
    Any entry in `unmatched` is a mint with no voucher on record —
-   investigate it before unpausing.
+   investigate it before unpausing. Check `windowTruncated` first: if
+   it is `true`, the scan covered only the trailing 5,000 blocks
+   (`NFT_DEPLOY_BLOCK` unset) and a clean-looking answer is NOT a full
+   audit — set the deploy block and re-run.
 3. **Rotate** (step 2 below), then **unpause** only after the new
    signer is verified on-chain and the backend env is updated.
 

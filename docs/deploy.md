@@ -30,7 +30,9 @@ for the project owner** — no agent creates accounts on the owner's behalf.
   `BSC_RPC_URL`, `NFT_CONTRACT_ADDRESS` (after Phase 2),
   `ADMIN_SIGNER_PRIVATE_KEY` (generate a fresh project key — never reuse a
   personal wallet key; store a backup offline, mode 600),
-  `ADMIN_PASSWORD_HASH` (Phase 4), `CORS_ORIGIN` (the web app URL).
+  `ADMIN_PASSWORD_HASH` (Phase 4), `CORS_ORIGIN` (the web app URL),
+  `NFT_DEPLOY_BLOCK` (the NFT contract's deployment block — required for
+  a full mint-audit; see §5).
 - Note: on Vercel serverless, the local SQLite file does **not** persist —
   use Turso (below) for any deployed API.
 
@@ -48,6 +50,11 @@ for the project owner** — no agent creates accounts on the owner's behalf.
 - A deployment only counts as successful with a **transaction hash and
   BscScan source verification**. Mainnet deployment needs the owner's
   explicit approval and wallet tap, and only after Phase 5 tests pass.
+- After deploying the contract, set `NFT_DEPLOY_BLOCK` on the API to the
+  deployment block (BscScan shows it on the contract page). Without it,
+  `GET /api/admin/mint-audit` scans only the trailing 5,000 blocks and
+  answers `windowTruncated: true` — an incomplete scan must never be
+  read as "no anomalies" (M-1 fix).
 
 ## Local development
 
