@@ -3,6 +3,31 @@
 Source: Phase 0 audit report §5.4. These rights are enforced by the smart
 contract and the backend API, not just written here.
 
+## Admin authentication (Phase 4)
+
+- **Password:** checked against a scrypt hash in env
+  (`ADMIN_PASSWORD_HASH`). Generate it with
+  `ADMIN_PASSWORD='...' npm run admin:hash` — the password is never
+  stored in the repo or in any file. Wrong password → generic 401
+  ("invalid credentials"). Login is rate-limited: 5 attempts / 15 min
+  per IP, then 429 (see `docs/rate-limits.md`).
+- **Session:** a successful login returns an HMAC-signed bearer token
+  (secret `ADMIN_SESSION_SECRET`, fail-closed when unset), valid 2 h.
+  The token is kept in memory in the admin UI — never localStorage.
+  Every `/api/admin/*` route except login requires it (missing /
+  invalid / expired → 401).
+- **Self-approval block:** when `ADMIN_WALLET` is set, the review API
+  refuses (403) any decision on a submission from the admin's own
+  wallet. If `ADMIN_WALLET` is unset, the server logs a startup
+  warning that the block is inactive — set it before any public use.
+- **Voucher lifetime:** approvals sign vouchers with a deadline of at
+  most 1 hour (enforced in `signVoucher` itself, audit M-3). The
+  audit-log entry for an approval records the voucher DIGEST, never
+  the signature.
+- **Audit log:** every decision is appended to a hash-chained,
+  append-only log (`GET /api/admin/audit-log`, verify with
+  `GET /api/admin/audit-log/verify`). There is no edit or delete path.
+
 ## Admin CAN
 
 - **Approve or reject a submission** after manually reading the linked

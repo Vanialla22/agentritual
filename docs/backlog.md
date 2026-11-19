@@ -1,9 +1,17 @@
-# Backlog — Phase 1 audit items (NOT built in Phase 2)
+# Backlog — Phase 1 audit items (items 1, 2, 4 DONE in Phase 4)
 
-These four items came out of the Phase 1 audit. They are recorded here
-with their intended phase. None of them is implemented in Phase 2.
+These four items came out of the Phase 1 audit. Items 1, 2, and 4
+were implemented in Phase 4 (see `files/phase-4-report.md`); item 3
+remains manual review by design.
 
 ## 1. Wallet ownership proof via signature challenge
+- **✅ DONE in Phase 4.** `GET /api/auth/challenge` +
+  `POST /api/auth/verify` (EIP-191 personal sign, stateless HMAC
+  tag, 10 min); `POST /api/submissions` requires a valid proof token
+  bound to the submitting wallet. Round-trip tested end-to-end with
+  three wallets. Limitation: BAW CLI `sign-message` is EIP-712-only,
+  so a BAW-driven agent must sign with its own personal-sign
+  capability (documented in `packages/skill/skill.md`).
 - **Intended phase:** Phase 3/4 (API).
 - **What:** before a submission is accepted, the API asks the submitting
   wallet to sign a one-time challenge (EIP-191 personal sign) proving it
@@ -15,14 +23,14 @@ with their intended phase. None of them is implemented in Phase 2.
   voucher proves admin approval at mint time.
 
 ## 2. Strengthen audit-log controls
-- **Intended phase:** Phase 4 (admin + tracker).
-- **What:** the `audit_log` table is append-only by design (no
-  UPDATE/DELETE endpoints), but enforcement is by convention only.
-  Harden it: DB-level trigger/role that rejects UPDATE/DELETE, hash-chain
-  each row to the previous row (tamper evidence), and an admin UI view
-  that shows the full chain. Also enforce the self-approval block
-  server-side (reviewer wallet != submitter wallet) — the prototype fix
-  (Phase 1 step 0) is UI-level only.
+- **✅ DONE in Phase 4.** Hash chain (`prev_hash`/`entry_hash`,
+  migration 004, startup backfill for legacy rows),
+  `GET /api/admin/audit-log/verify` (verified `valid: true` over 5
+  entries in the e2e run), self-approval block enforced server-side
+  in `POST /api/admin/review` (403, tested). DB-level
+  trigger/role was not added — enforcement is the append-only API
+  (no UPDATE/DELETE endpoint exists) plus the tamper-evident chain.
+  An admin UI view of the log ships in `apps/web/src/pages/Admin.tsx`.
 
 ## 3. Separate URL validation from content verification of submissions
 - **Intended phase:** Phase 3/4 (API + admin review).
@@ -36,13 +44,14 @@ with their intended phase. None of them is implemented in Phase 2.
   URL check verifies content.
 
 ## 4. Rate limiting and spam protection for the API
-- **Intended phase:** Phase 4/5 (API hardening).
-- **What:** add per-IP and per-wallet rate limits on `POST
-  /api/submissions` (e.g. max N submissions per wallet per campaign,
-  burst limit per IP), plus a submission cooldown and a cap on pending
-  submissions per wallet. Without this, one actor can flood the review
-  queue. Revisit before any public launch; testnet/Phase 2 does not need
-  it (no public API yet).
+- **✅ DONE in Phase 4.** In-memory token buckets
+  (`apps/api/src/rateLimit.ts`, no new dependency): submissions
+  5/h per wallet + 20/h per IP, login 5/15 min per IP, eligibility
+  60/min per IP, challenge 10/min per IP; 429 + `Retry-After`.
+  Limits in `docs/rate-limits.md`. 429 proven live for challenge
+  (4th in a minute) and login (6th attempt in 15 min). Buckets are
+  in-process: fine for a single instance; a multi-instance public
+  launch needs a shared store.
 
 ---
 

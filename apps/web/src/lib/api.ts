@@ -59,10 +59,15 @@ export function fetchTracker(): Promise<TrackerData> {
   return api<TrackerData>("/api/tracker");
 }
 
+export function fetchSubmission(id: string): Promise<Submission> {
+  return api<Submission>(`/api/submissions/${encodeURIComponent(id)}`);
+}
+
 export function submitProof(input: {
   wallet: string;
   squareUrl: string;
   campaignId: string;
+  proofToken?: string;
 }): Promise<Submission> {
   return api<Submission>("/api/submissions", {
     body: JSON.stringify(input),
@@ -70,6 +75,124 @@ export function submitProof(input: {
   });
 }
 
-export function fetchSubmission(id: string): Promise<Submission> {
-  return api<Submission>(`/api/submissions/${encodeURIComponent(id)}`);
+export interface Challenge {
+  address: string;
+  message: string;
+  expiresAt: string;
+  tag: string;
+}
+
+export function fetchChallenge(address: string): Promise<Challenge> {
+  return api<Challenge>(
+    `/api/auth/challenge?address=${encodeURIComponent(address)}`,
+  );
+}
+
+export function verifyChallenge(input: {
+  address: string;
+  message: string;
+  tag: string;
+  signature: string;
+}): Promise<{ address: string; proofToken: string }> {
+  return api<{ address: string; proofToken: string }>("/api/auth/verify", {
+    body: JSON.stringify(input),
+    method: "POST",
+  });
+}
+
+// --- Admin (token kept in memory only, never localStorage) ---
+
+export interface AdminSubmission extends Submission {
+  review_note: string | null;
+  reviewed_at: string | null;
+}
+
+export interface Voucher {
+  campaignId: number;
+  recipient: string;
+  deadline: number;
+  nonce: string;
+  signature: string;
+  digest: string;
+}
+
+export async function adminLogin(password: string): Promise<string> {
+  const res = await api<{ token: string }>("/api/admin/login", {
+    body: JSON.stringify({ password }),
+    method: "POST",
+  });
+  return res.token;
+}
+
+function adminHeaders(token: string): Record<string, string> {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export function fetchAdminSubmissions(
+  token: string,
+  status?: string,
+): Promise<{ items: AdminSubmission[] }> {
+  const q = status ? `?status=${encodeURIComponent(status)}` : "";
+  return api<{ items: AdminSubmission[] }>(`/api/admin/submissions${q}`, {
+    headers: adminHeaders(token),
+  });
+}
+
+export function adminReview(
+  token: string,
+  input: { submissionId: string; decision: "approve" | "reject"; note?: string },
+): Promise<{ id: string; status: string; voucher?: Voucher; note?: string | null }> {
+  return api("/api/admin/review", {
+    body: JSON.stringify(input),
+    headers: adminHeaders(token),
+    method: "POST",
+  });
+}
+
+export interface AuditLogEntry {
+  id: number;
+  submission_id: string | null;
+  actor: string;
+  action: string;
+  detail: string | null;
+  created_at: string;
+  prev_hash: string | null;
+  entry_hash: string | null;
+}
+
+export function fetchAuditLog(
+  token: string,
+): Promise<{ items: AuditLogEntry[] }> {
+  return api<{ items: AuditLogEntry[] }>("/api/admin/audit-log", {
+    headers: adminHeaders(token),
+  });
+}
+
+export function verifyAuditLog(
+  token: string,
+): Promise<{ valid: boolean; checked: number; firstBadIndex?: number }> {
+  return api("/api/admin/audit-log/verify", {
+    headers: adminHeaders(token),
+  });
+}
+
+export interface MintAuditEntry {
+  blockNumber: number;
+  campaignId: number;
+  tokenId: number;
+  recipient: string;
+  txHash: string;
+}
+
+export function fetchMintAudit(
+  token: string,
+): Promise<{
+  checked: number;
+  matched: MintAuditEntry[];
+  unmatched: MintAuditEntry[];
+  fromBlock: number;
+}> {
+  return api("/api/admin/mint-audit", {
+    headers: adminHeaders(token),
+  });
 }

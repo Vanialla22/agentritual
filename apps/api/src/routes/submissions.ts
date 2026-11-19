@@ -3,6 +3,9 @@ import type { FastifyInstance } from "fastify";
 import { ethers } from "ethers";
 import type { Db } from "../db";
 import { getAgentIdBalance } from "../agentId";
+import { verifyProofToken } from "../auth";
+import { appendAuditLog } from "../auditLog";
+import { checkRateLimit, clientIp } from "../rateLimit";
 import { config } from "../config";
 
 export interface SubmissionRow {
@@ -12,6 +15,15 @@ export interface SubmissionRow {
   campaign_id: string;
   status: string;
   created_at: string;
+  review_note: string | null;
+  reviewed_at: string | null;
+}
+
+interface VoucherRow {
+  deadline: number;
+  nonce: string;
+  recipient: string;
+  signature: string;
 }
 
 /** A Square post URL must be on binance.com under /square/post/<id>. */
@@ -24,6 +36,7 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
       wallet?: unknown;
       squareUrl?: unknown;
       campaignId?: unknown;
+      proofToken?: unknown;
     };
     const wallet =
       typeof body.wallet === "string" ? body.wallet.trim() : "";
@@ -33,6 +46,8 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
       typeof body.campaignId === "string" && body.campaignId.trim()
         ? body.campaignId.trim()
         : "001";
+    const proofToken =
+      typeof body.proofToken === "string" ? body.proofToken : "";
 
     if (!wallet || !ethers.isAddress(wallet)) {
       return reply
@@ -43,6 +58,51 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
       return reply.status(400).send({
         error:
           "squareUrl must be a Binance Square post URL: https://www.binance.com/square/post/<id>",
+      });
+    }
+
+    // Rate limits: 5/hour per wallet, 20/hour per IP.
+    const walletLimit = checkRateLimit(
+      {
+        capacity: config.rateLimits.submissionsPerWalletPerHour,
+        identity: () => wallet.toLowerCase(),
+        key: "submissions:wallet",
+        windowMs: 60 * 60_000,
+      },
+      req,
+    );
+    if (!walletLimit.allowed) {
+      reply.header("Retry-After", String(walletLimit.retryAfterSeconds));
+      return reply.status(429).send({
+        error: `rate limit exceeded: max ${config.rateLimits.submissionsPerWalletPerHour} submissions per wallet per hour`,
+        retryAfterSeconds: walletLimit.retryAfterSeconds,
+      });
+    }
+    const ipLimit = checkRateLimit(
+      {
+        capacity: config.rateLimits.submissionsPerIpPerHour,
+        identity: clientIp,
+        key: "submissions:ip",
+        windowMs: 60 * 60_000,
+      },
+      req,
+    );
+    if (!ipLimit.allowed) {
+      reply.header("Retry-After", String(ipLimit.retryAfterSeconds));
+      return reply.status(429).send({
+        error: `rate limit exceeded: max ${config.rateLimits.submissionsPerIpPerHour} submissions per hour from this IP`,
+        retryAfterSeconds: ipLimit.retryAfterSeconds,
+      });
+    }
+
+    // Wallet-ownership proof (Phase 4, backlog item 1): the submitter
+    // must prove they control the wallet by signing a challenge
+    // (GET /api/auth/challenge → POST /api/auth/verify). Without a
+    // valid proof token bound to this wallet, the submission is refused.
+    if (!proofToken || !verifyProofToken(proofToken, wallet)) {
+      return reply.status(401).send({
+        error:
+          "prove wallet ownership first: GET /api/auth/challenge, sign the message, POST /api/auth/verify, then submit with the returned proofToken",
       });
     }
 
@@ -93,10 +153,12 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
       "INSERT INTO submissions (id, wallet, square_url, campaign_id, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
       [id, wallet.toLowerCase(), squareUrl, campaignId, createdAt],
     );
-    await db.run(
-      "INSERT INTO audit_log (submission_id, actor, action, detail, created_at) VALUES (?, ?, ?, ?, ?)",
-      [id, "system", "submission_created", squareUrl, createdAt],
-    );
+    await appendAuditLog(db, {
+      action: "submission_created",
+      actor: "system",
+      detail: squareUrl,
+      submissionId: id,
+    });
     const row = await db.get<SubmissionRow>(
       "SELECT * FROM submissions WHERE id = ?",
       [id],
@@ -112,6 +174,27 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
     );
     if (!row) {
       return reply.status(404).send({ error: "submission not found" });
+    }
+    // When approved, the response carries the claim voucher the user's
+    // agent needs to mint (campaignId, recipient, deadline, nonce,
+    // signature). Pending/rejected submissions carry no voucher.
+    if (row.status === "approved") {
+      const voucher = await db.get<VoucherRow>(
+        "SELECT recipient, deadline, nonce, signature FROM vouchers WHERE submission_id = ?",
+        [id],
+      );
+      if (voucher) {
+        return {
+          ...row,
+          voucher: {
+            campaignId: Number(row.campaign_id),
+            deadline: voucher.deadline,
+            nonce: voucher.nonce,
+            recipient: voucher.recipient,
+            signature: voucher.signature,
+          },
+        };
+      }
     }
     return row;
   });

@@ -136,22 +136,42 @@ Show the draft to the user. **The user publishes it themselves**
 from their own Binance Square account. Never ask for their Square
 password or API key.
 
-### 4. Submit the post URL as proof
+### 4. Prove wallet ownership, then submit the post URL as proof
 
-After the user pastes the published post URL, submit it to the
-AgentRitual API:
+Before submitting, prove the user controls the wallet. Request a
+challenge, have the user sign it, verify the signature, then submit
+with the proof token:
 
 ```bash
+# 1. Challenge (10 min expiry, stateless HMAC tag — no DB row)
+curl "<API>/api/auth/challenge?address=<agentic wallet address>"
+# → { address, message, expiresAt, tag }
+
+# 2. The USER signs the exact message with their wallet
+#    (personal_sign / eth_sign). This is a harmless ownership
+#    statement — it authorizes nothing and shares no key.
+#    NOTE: BAW CLI `sign-message` is EIP-712-only and cannot
+#    personal-sign this challenge. Sign it with the agent's own
+#    personal-sign capability (ethers/cast/AI Pro) instead.
+
+# 3. Verify the signature → proof token (10 min, bound to the wallet)
+curl -X POST <API>/api/auth/verify \
+  -H 'Content-Type: application/json' \
+  -d '{"address":"<wallet>","message":"<challenge message>","tag":"<tag>","signature":"<0x signature>"}'
+# → { address, proofToken }
+
+# 4. Submit the proof with the token
 curl -X POST <API>/api/submissions \
   -H 'Content-Type: application/json' \
-  -d '{"wallet":"<agentic wallet address>","squareUrl":"<post URL>","campaignId":"001"}'
+  -d '{"wallet":"<agentic wallet address>","squareUrl":"<post URL>","campaignId":"001","proofToken":"<proofToken>"}'
 ```
 
-The API validates the URL format
-(`binance.com/square/post/<id>`) AND checks Agent ID ownership
-on-chain before accepting. A URL alone is not proof: an admin reads
-the post before approving (manual review, Phase 4). The response is
-a submission with status `pending`.
+Without a valid proof token the API refuses the submission (401) —
+so nobody can submit a proof URL in someone else's name. The API
+also validates the URL format (`binance.com/square/post/<id>`) AND
+checks Agent ID ownership on-chain before accepting. A URL alone is
+not proof: an admin reads the post before approving (manual review,
+Phase 4). The response is a submission with status `pending`.
 
 ### 5. Check submission status
 
@@ -221,7 +241,10 @@ Join Campaign 001 on AgentRitual. Read the AgentRitual agent skill
    hashtags #BinanceWalletHackathon and #AgenticWallet.
 3. Show me the draft. I will publish it myself from my own Square
    account.
-4. After I paste the post URL, submit it as proof for manual review.
+4. After I paste the post URL, prove I own the wallet first: request
+   an ownership challenge from the API, sign the challenge message
+   with my wallet, verify the signature, then submit the proof with
+   the proof token.
 5. If the proof is approved and a claim voucher is issued, show me
    the full mint transaction first — chain, contract address,
    recipient, NFT, and gas estimate — and wait for my explicit

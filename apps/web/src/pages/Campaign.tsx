@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Card, GoldButton, HonestNote, SectionTitle } from "../App";
 import {
+  fetchChallenge,
   fetchEligibility,
   fetchSubmission,
   submitProof,
+  verifyChallenge,
+  type Challenge,
   type Eligibility,
 } from "../lib/api";
 
@@ -17,7 +20,10 @@ const AGENT_PROMPT = `Join Campaign 001 on AgentRitual. Read the AgentRitual age
    hashtags #BinanceWalletHackathon and #AgenticWallet.
 3. Show me the draft. I will publish it myself from my own Square
    account.
-4. After I paste the post URL, submit it as proof for manual review.
+4. After I paste the post URL, prove I own the wallet first: request
+   an ownership challenge from the API, sign the challenge message with
+   my wallet, verify the signature, then submit the proof with the
+   proof token.
 5. If the proof is approved and a claim voucher is issued, show me
    the full mint transaction first — chain, contract address,
    recipient, NFT, and gas estimate — and wait for my explicit
@@ -46,6 +52,11 @@ export function CampaignPage() {
     null,
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [signature, setSignature] = useState("");
+  const [proofToken, setProofToken] = useState<string | null>(null);
+  const [proofBusy, setProofBusy] = useState(false);
+  const [proofError, setProofError] = useState<string | null>(null);
   const pollCount = useRef(0);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -102,14 +113,62 @@ export function CampaignPage() {
     }
   }
 
+  async function onGetChallenge() {
+    if (!wallet.trim()) {
+      setProofError("Enter your Agentic Wallet address first.");
+      return;
+    }
+    setProofBusy(true);
+    setProofError(null);
+    setProofToken(null);
+    try {
+      const ch = await fetchChallenge(wallet.trim());
+      setChallenge(ch);
+    } catch (err) {
+      setProofError(
+        err instanceof Error ? err.message : "Challenge request failed.",
+      );
+    } finally {
+      setProofBusy(false);
+    }
+  }
+
+  async function onVerifySignature(e: React.FormEvent) {
+    e.preventDefault();
+    if (!challenge || !signature.trim()) return;
+    setProofBusy(true);
+    setProofError(null);
+    try {
+      const res = await verifyChallenge({
+        address: challenge.address,
+        message: challenge.message,
+        signature: signature.trim(),
+        tag: challenge.tag,
+      });
+      setProofToken(res.proofToken);
+    } catch (err) {
+      setProofError(
+        err instanceof Error ? err.message : "Signature verification failed.",
+      );
+    } finally {
+      setProofBusy(false);
+    }
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setMessage(null);
     setError(null);
     try {
+      if (!proofToken) {
+        throw new Error(
+          "Prove wallet ownership first (step above) — submissions require a valid proof token.",
+        );
+      }
       const sub = await submitProof({
         campaignId: "001",
+        proofToken,
         squareUrl: squareUrl.trim(),
         wallet: wallet.trim(),
       });
@@ -247,6 +306,59 @@ export function CampaignPage() {
       </section>
 
       <section>
+        <SectionTitle>Prove wallet ownership</SectionTitle>
+        <Card>
+          <p className="text-sm text-zinc-200">
+            Before submitting, prove you control the wallet by signing a
+            one-time challenge message. Signing a message is not sharing a
+            private key — and the message authorizes nothing, it only proves
+            ownership for 10 minutes.
+          </p>
+          <div className="mt-4">
+            <GoldButton onClick={onGetChallenge} disabled={proofBusy}>
+              {proofBusy ? "Working…" : "Get challenge"}
+            </GoldButton>
+          </div>
+          {challenge && (
+            <div className="mt-4 space-y-3">
+              <p className="break-all rounded-md border border-line bg-ink px-3 py-2 font-mono text-xs text-zinc-200">
+                {challenge.message}
+              </p>
+              <p className="text-xs text-muted">
+                Ask your agent to sign this exact message with your wallet
+                (personal_sign), then paste the signature below. Challenge
+                expires {challenge.expiresAt}.
+              </p>
+              <form onSubmit={onVerifySignature} className="space-y-3">
+                <input
+                  type="text"
+                  value={signature}
+                  onChange={(e) => setSignature(e.target.value)}
+                  placeholder="0x… signature"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="w-full rounded-md border border-line bg-ink px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-gold focus:outline-none"
+                />
+                <GoldButton disabled={proofBusy || !signature.trim()} type="submit">
+                  {proofBusy ? "Verifying…" : "Verify signature"}
+                </GoldButton>
+              </form>
+            </div>
+          )}
+          {proofToken && (
+            <p className="mt-4 rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-gold">
+              ✓ Wallet ownership proven — you can submit your proof below.
+            </p>
+          )}
+          {proofError && (
+            <p className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              {proofError}
+            </p>
+          )}
+        </Card>
+      </section>
+
+      <section>
         <SectionTitle>Submit your proof URL</SectionTitle>
         <Card>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -287,11 +399,16 @@ export function CampaignPage() {
             </div>
             <button
               type="submit"
-              disabled={busy}
+              disabled={busy || !proofToken}
               className="rounded-md bg-gold px-5 py-2.5 font-semibold text-black transition hover:brightness-110 disabled:opacity-50"
             >
               {busy ? "Submitting…" : "Submit proof"}
             </button>
+            {!proofToken && (
+              <p className="mt-1 text-xs text-muted">
+                Prove wallet ownership (step above) to enable this button.
+              </p>
+            )}
           </form>
           {message && (
             <p className="mt-4 rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-gold">
@@ -330,7 +447,10 @@ export function CampaignPage() {
           <HonestNote>
             Submissions are stored with status “pending” and the wallet is
             checked on-chain for an Agent ID before acceptance (Phase 3).
-            Admin review, voucher issuance, and minting arrive in Phase 4.
+            Since Phase 4, a submission also requires a wallet-ownership
+            proof (signed challenge, 10 min) — so nobody can submit a proof
+            URL in someone else&apos;s name. Admin review issues the
+            voucher on approval.
           </HonestNote>
         </div>
       </section>

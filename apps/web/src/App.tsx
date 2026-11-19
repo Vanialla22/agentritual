@@ -26,13 +26,17 @@ export function GoldButton({
   children,
   onClick,
   href,
+  disabled = false,
+  type = "button",
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   href?: string;
+  disabled?: boolean;
+  type?: "button" | "submit";
 }) {
   const cls =
-    "inline-block rounded-md bg-gold px-5 py-2.5 font-semibold text-black transition hover:brightness-110";
+    "inline-block rounded-md bg-gold px-5 py-2.5 font-semibold text-black transition hover:brightness-110 disabled:opacity-50";
   if (href) {
     return (
       <a className={cls} href={href}>
@@ -41,7 +45,7 @@ export function GoldButton({
     );
   }
   return (
-    <button className={cls} onClick={onClick} type="button">
+    <button className={cls} onClick={onClick} type={type} disabled={disabled}>
       {children}
     </button>
   );

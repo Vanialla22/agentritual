@@ -74,13 +74,29 @@ export function getSignerAddress(): string | null {
 }
 
 /**
+ * Maximum voucher lifetime: 1 hour (audit M-3 mitigation). The contract
+ * accepts any deadline, so the backend is the enforcement point — no
+ * caller can issue a longer-lived voucher through this function.
+ */
+export const MAX_VOUCHER_TTL_SECONDS = 60 * 60;
+
+/**
  * Sign a claim voucher. Throws "voucher signing not configured" when the
  * env var (or the contract address, needed for the EIP-712 domain) is
- * missing. Callers translate that into HTTP 503.
+ * missing. Throws "voucher deadline exceeds maximum TTL" when the
+ * deadline is not within the next hour. Callers translate these into
+ * HTTP 503 / 400.
  */
 export async function signVoucher(voucher: ClaimVoucher): Promise<string> {
   if (!config.adminSignerKey) {
     throw new Error("voucher signing not configured");
+  }
+  const now = Math.floor(Date.now() / 1000);
+  if (
+    voucher.deadline <= now ||
+    voucher.deadline > now + MAX_VOUCHER_TTL_SECONDS
+  ) {
+    throw new Error("voucher deadline exceeds maximum TTL (1 hour)");
   }
   const domain = getVoucherDomain();
   const wallet = new ethers.Wallet(config.adminSignerKey);
