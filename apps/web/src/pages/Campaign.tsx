@@ -392,9 +392,10 @@ export function CampaignPage() {
                 className="w-full rounded-md border border-line bg-ink px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-gold focus:outline-none"
               />
               <p className="mt-1 text-xs text-muted">
-                Format checked: the URL must be on binance.com under
-                /square/post/&lt;id&gt;. Content is checked by a human
-                reviewer, not by this form.
+                Tempel link postingan Binance Square di sini. Link share
+                dari aplikasi Binance maupun link web juga bisa digunakan.
+                Konten diperiksa oleh human reviewer, bukan otomatis oleh
+                form.
               </p>
             </div>
             <button
