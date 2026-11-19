@@ -30,6 +30,110 @@ interface VoucherRow {
 export const SQUARE_URL_RE =
   /^https:\/\/(www\.)?binance\.com\/square\/post\/[A-Za-z0-9_-]+\/?$/;
 
+const SQUARE_HOSTS = new Set([
+  "binance.com",
+  "www.binance.com",
+  "app.binance.com",
+]);
+// Square post IDs observed in the wild are numeric snowflakes of 13–15
+// digits (e.g. 380847377801319). Cap at 19: the longest possible signed
+// 64-bit snowflake (9,223,372,036,854,775,807), so future growth still
+// passes while absurd lengths fail closed.
+const SQUARE_ID_RE = /^[A-Za-z0-9_-]{1,19}$/;
+const CPOS_ID_RE = /^[0-9]{1,19}$/;
+// Only the locales verified live: en and id (both fetched 19 Nov 2026
+// and serving the same post). Other real prefixes (sv, sk, en-AE) exist
+// but are NOT allowlisted — they fail closed until verified.
+const SQUARE_LOCALES = new Set(["en", "id"]);
+
+/**
+ * Normalize a user-supplied Binance Square link to the canonical form
+ * `https://www.binance.com/square/post/<id>`, or null when the input is
+ * not a recognized Square post link.
+ *
+ * Accepts the three shapes users actually copy:
+ * - web:        https://www.binance.com/square/post/<id>
+ * - web+locale: https://www.binance.com/en/square/post/<id> (en, id only)
+ * - app share:  https://app.binance.com/uni-qr/cpos/<id>?... (query ignored)
+ *
+ * Post IDs are capped at 19 characters: observed IDs are numeric
+ * snowflakes of 13–15 digits, and 19 is the longest possible signed
+ * 64-bit snowflake. The URL is never fetched — this is purely
+ * syntactic. Query parameters and fragments are dropped entirely
+ * (referral codes, tracking tokens). The rebuilt URL is checked
+ * against SQUARE_URL_RE before it is returned, so the old regex
+ * stays the final gate.
+ */
+export function normalizeSquareUrl(raw: string): string | null {
+  const input = raw.trim();
+  if (input === "") return null;
+  // WHATWG URL parsing is lenient in ways that hide structure: it
+  // treats "\" as "/" for https: URLs, strips tabs/newlines, and
+  // resolves "." / ".." segments. Reject those inputs outright.
+  if (/[\u0000-\u001f\u007f\\]/.test(input)) return null;
+  if (
+    input.includes("/./") ||
+    input.includes("/../") ||
+    input.endsWith("/.") ||
+    input.endsWith("/..")
+  ) {
+    return null;
+  }
+  let url: URL;
+  try {
+    url = new URL(input);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  if (url.username !== "" || url.password !== "") return null;
+  if (url.port !== "") return null;
+  if (!SQUARE_HOSTS.has(url.hostname)) return null;
+  // Any percent-encoding in the path could hide structure (%2F -> "/"),
+  // and post IDs never contain "%", so reject it outright.
+  if (url.pathname.includes("%")) return null;
+  // Split the path without collapsing empty segments, so "//" or a
+  // double trailing slash is rejected instead of silently normalized.
+  const path = url.pathname.endsWith("/")
+    ? url.pathname.slice(0, -1)
+    : url.pathname;
+  const parts = path.split("/");
+  let id: string | null = null;
+  if (url.hostname === "app.binance.com") {
+    // App share link only: /uni-qr/cpos/<numeric id>
+    if (
+      parts.length === 4 &&
+      parts[0] === "" &&
+      parts[1] === "uni-qr" &&
+      parts[2] === "cpos" &&
+      CPOS_ID_RE.test(parts[3])
+    ) {
+      id = parts[3];
+    }
+  } else if (
+    parts.length === 4 &&
+    parts[0] === "" &&
+    parts[1] === "square" &&
+    parts[2] === "post" &&
+    SQUARE_ID_RE.test(parts[3])
+  ) {
+    id = parts[3];
+  } else if (
+    parts.length === 5 &&
+    parts[0] === "" &&
+    SQUARE_LOCALES.has(parts[1]) &&
+    parts[2] === "square" &&
+    parts[3] === "post" &&
+    SQUARE_ID_RE.test(parts[4])
+  ) {
+    id = parts[4];
+  }
+  if (id === null) return null;
+  const canonical = `https://www.binance.com/square/post/${id}`;
+  // Final gate: the pre-existing regex must accept the rebuilt URL.
+  return SQUARE_URL_RE.test(canonical) ? canonical : null;
+}
+
 export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
   app.post("/api/submissions", async (req, reply) => {
     const body = (req.body ?? {}) as {
@@ -40,8 +144,13 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
     };
     const wallet =
       typeof body.wallet === "string" ? body.wallet.trim() : "";
-    const squareUrl =
+    const rawSquareUrl =
       typeof body.squareUrl === "string" ? body.squareUrl.trim() : "";
+    // App share links (app.binance.com/uni-qr/cpos/...) and locale web
+    // links (/en/square/post/...) are normalized to the canonical form
+    // before validation. The stored URL is always canonical, and the
+    // old regex still runs as the final gate inside normalizeSquareUrl.
+    const squareUrl = normalizeSquareUrl(rawSquareUrl);
     const campaignId =
       typeof body.campaignId === "string" && body.campaignId.trim()
         ? body.campaignId.trim()
@@ -54,10 +163,10 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
         .status(400)
         .send({ error: "wallet must be a valid EVM address" });
     }
-    if (!squareUrl || !SQUARE_URL_RE.test(squareUrl)) {
+    if (!squareUrl) {
       return reply.status(400).send({
         error:
-          "squareUrl must be a Binance Square post URL: https://www.binance.com/square/post/<id>",
+          "squareUrl must be a Binance Square post URL: https://www.binance.com/square/post/<id> (app share links are accepted and normalized)",
       });
     }
 
