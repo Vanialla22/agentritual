@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { ethers } from "ethers";
 import type { Db } from "../db";
+import { getAgentIdBalance } from "../agentId";
+import { config } from "../config";
 
 export interface SubmissionRow {
   id: string;
@@ -41,6 +43,34 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
       return reply.status(400).send({
         error:
           "squareUrl must be a Binance Square post URL: https://www.binance.com/square/post/<id>",
+      });
+    }
+
+    // Agent ID gate (Phase 3): the submitting wallet must hold an Agent
+    // ID on the configured registry. Fail closed — an unconfigured
+    // registry or an RPC failure is a 503, never a skipped check.
+    // (Backlog item 1 — a signature challenge proving wallet ownership
+    // at submission time — is Phase 4 scope; this gate proves the
+    // wallet holds an Agent ID, which is what the contract enforces.)
+    if (!config.agentIdRegistryAddress) {
+      return reply.status(503).send({
+        error:
+          "Agent ID verification not configured: AGENT_ID_REGISTRY_ADDRESS is not set",
+      });
+    }
+    let agentBalance: bigint;
+    try {
+      agentBalance = await getAgentIdBalance(wallet);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "RPC error";
+      return reply.status(503).send({
+        error: `Agent ID check unavailable, try again later: ${msg}`,
+      });
+    }
+    if (agentBalance === 0n) {
+      return reply.status(403).send({
+        error:
+          "wallet holds no Agent ID on the configured registry — only Agent ID holders can join Campaign 001",
       });
     }
 

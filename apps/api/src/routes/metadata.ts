@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { config } from "../config";
 
-const MAX_TOKEN_ID = 1000;
+// Token IDs are globally sequential starting at 0 (audit I-2): Campaign 001
+// mints 0–999, later campaigns continue from 1,000. 100,000 covers the
+// first 100 campaigns; the route does not check on-chain existence.
+const MAX_TOKEN_ID = 100_000;
 
 /**
  * GET /metadata/:id — ERC-721 token metadata for the Genesis Seal.

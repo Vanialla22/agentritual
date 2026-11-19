@@ -4,8 +4,11 @@ import { config } from "../config";
 
 const NFT_ABI = [
   "function totalSupply() view returns (uint256)",
-  "function MAX_SUPPLY() view returns (uint256)",
-  "event Mint(address indexed minter, uint256 indexed tokenId)",
+  "function MAX_SUPPLY_PER_CAMPAIGN() view returns (uint256)",
+  // Real event (AgentRitualNFT.sol): Mint(uint256 indexed campaignId,
+  // uint256 indexed tokenId, address indexed recipient). An earlier
+  // draft used a wrong (minter, tokenId) shape and misread args[0].
+  "event Mint(uint256 indexed campaignId, uint256 indexed tokenId, address indexed recipient)",
 ];
 
 const MAX_SUPPLY_FALLBACK = 1000;
@@ -39,9 +42,9 @@ export function registerTrackerRoutes(app: FastifyInstance) {
       ]);
       let maxSupply = BigInt(MAX_SUPPLY_FALLBACK);
       try {
-        maxSupply = (await contract.MAX_SUPPLY()) as bigint;
+        maxSupply = (await contract.MAX_SUPPLY_PER_CAMPAIGN()) as bigint;
       } catch {
-        // Contract without MAX_SUPPLY() — fall back to the documented cap.
+        // Contract without MAX_SUPPLY_PER_CAMPAIGN() — fall back to the documented cap.
       }
       const fromBlock = Math.max(0, latestBlock - EVENT_WINDOW_BLOCKS);
       const events = (await contract.queryFilter(
@@ -54,7 +57,8 @@ export function registerTrackerRoutes(app: FastifyInstance) {
           const block = await ev.getBlock();
           return {
             blockNumber: ev.blockNumber,
-            minter: (ev.args?.[0] as string) ?? "",
+            // Event args: [0] campaignId, [1] tokenId, [2] recipient.
+            minter: (ev.args?.[2] as string) ?? "",
             timestamp: block
               ? new Date(block.timestamp * 1000).toISOString()
               : null,
@@ -66,8 +70,11 @@ export function registerTrackerRoutes(app: FastifyInstance) {
       const total = Number(totalSupply);
       const max = Number(maxSupply);
       return {
-        chainId: 56,
-        chainName: "BNB Smart Chain",
+        chainId: config.chainId,
+        chainName:
+          config.chainId === 56
+            ? "BNB Smart Chain"
+            : "BNB Smart Chain Testnet",
         contractAddress: config.nftContractAddress,
         maxSupply: max,
         recentMints,

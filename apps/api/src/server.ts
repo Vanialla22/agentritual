@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { config } from "./config";
 import { getDb, migrate } from "./db";
 import { registerAdminRoutes } from "./routes/admin";
+import { registerEligibilityRoutes } from "./routes/eligibility";
 import { registerMetadataRoutes } from "./routes/metadata";
 import { registerSubmissionRoutes } from "./routes/submissions";
 import { registerTrackerRoutes } from "./routes/tracker";
@@ -21,6 +22,7 @@ export async function buildServer() {
   }));
 
   registerSubmissionRoutes(app, db);
+  registerEligibilityRoutes(app);
   registerTrackerRoutes(app);
   registerMetadataRoutes(app);
   registerAdminRoutes(app);

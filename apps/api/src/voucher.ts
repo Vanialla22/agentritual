@@ -19,7 +19,14 @@ export interface ClaimVoucher {
   campaignId: number;
   recipient: string;
   deadline: number;
-  nonce: number;
+  /**
+   * bytes32 nonce (32-byte hex, e.g. ethers.randomBytes(32)).
+   * MUST be bytes32: the contract's VOUCHER_TYPEHASH is
+   * ClaimVoucher(...,bytes32 nonce) — a uint256 nonce encodes
+   * differently and the signature would recover to a wrong address
+   * on-chain (audit M-1).
+   */
+  nonce: string;
 }
 
 export const VOUCHER_TYPES = {
@@ -27,9 +34,14 @@ export const VOUCHER_TYPES = {
     { name: "campaignId", type: "uint256" },
     { name: "recipient", type: "address" },
     { name: "deadline", type: "uint256" },
-    { name: "nonce", type: "uint256" },
+    { name: "nonce", type: "bytes32" },
   ],
 };
+
+/** Generate a fresh random bytes32 nonce for a voucher. */
+export function newVoucherNonce(): string {
+  return ethers.hexlify(ethers.randomBytes(32));
+}
 
 export function getVoucherDomain(): {
   name: string;
@@ -41,7 +53,10 @@ export function getVoucherDomain(): {
     throw new Error("voucher signing not configured");
   }
   return {
-    chainId: 56,
+    // Audit M-2: chainId comes from env (NFT_CHAIN_ID, default 97
+    // testnet). The contract's EIP-712 domain uses block.chainid, so a
+    // hardcoded value would make vouchers for the other chain revert.
+    chainId: config.chainId,
     name: "AgentRitual",
     verifyingContract: config.nftContractAddress,
     version: "1",

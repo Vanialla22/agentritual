@@ -10,7 +10,7 @@ contract and the backend API, not just written here.
   plausible authorship).
 - **Sign claim vouchers** — automatic on approval. A voucher is bound to the
   submitter's wallet and has an expiry; it is single-use.
-- **Rotate the voucher signer key** (`setSigner` on the contract) if the
+- **Rotate the voucher signer key** (`setAuthorizedSigner` on the contract) if the
   signing key is ever compromised.
 - **Change the NFT metadata base URI.**
 - **Pause minting in an emergency** (pause stops minting; it does not change
@@ -36,7 +36,7 @@ contract and the backend API, not just written here.
 ## Contract ownership
 
 Owner = the deployer wallet (project owner, via Binance Agentic Wallet).
-Owner functions: `setSigner`, `setBaseURI`, `pause`/`unpause`. There is no
+Owner functions: `setAuthorizedSigner`, `setBaseURI`, `pause`/`unpause`. There is no
 timelock in the MVP — an accepted risk for the hackathon, mitigated by
 documenting every owner function here and on BscScan, and by keeping the
 owner key under the project owner's sole control.

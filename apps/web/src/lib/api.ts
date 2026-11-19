@@ -43,6 +43,18 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+export interface Eligibility {
+  address: string;
+  hasAgentId: boolean;
+  registry: string;
+}
+
+export function fetchEligibility(address: string): Promise<Eligibility> {
+  return api<Eligibility>(
+    `/api/eligibility?address=${encodeURIComponent(address)}`,
+  );
+}
+
 export function fetchTracker(): Promise<TrackerData> {
   return api<TrackerData>("/api/tracker");
 }

@@ -1,25 +1,32 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, GoldButton, HonestNote, SectionTitle } from "../App";
-import { fetchSubmission, submitProof } from "../lib/api";
+import {
+  fetchEligibility,
+  fetchSubmission,
+  submitProof,
+  type Eligibility,
+} from "../lib/api";
 
 const AGENT_PROMPT = `Join Campaign 001 on AgentRitual. Read the AgentRitual agent skill
-(skill.md, published with the project repository — Phase 3) and follow it.
+(skill.md, published with the project repository) and follow it.
 
-1. Check my Agentic Wallet address and confirm I hold a Binance Agent ID
-   (balanceOf on the official Agent ID contract
+1. Check my Agentic Wallet address and confirm I hold a Binance
+   Agent ID (balanceOf on the official Agent ID contract
    0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F must be greater than 0).
-2. Draft an original Binance Square post for Campaign 001 with the hashtags
-   #BinanceWalletHackathon and #AgenticWallet.
-3. Show me the draft. I will publish it myself from my own Square account.
+2. Draft an original Binance Square post for Campaign 001 with the
+   hashtags #BinanceWalletHackathon and #AgenticWallet.
+3. Show me the draft. I will publish it myself from my own Square
+   account.
 4. After I paste the post URL, submit it as proof for manual review.
-5. If the proof is approved and a claim voucher is issued, show me the full
-   mint transaction first — chain, contract address, recipient, NFT, and gas
-   estimate — and wait for my explicit approval before executing anything.
+5. If the proof is approved and a claim voucher is issued, show me
+   the full mint transaction first — chain, contract address,
+   recipient, NFT, and gas estimate — and wait for my explicit
+   approval before executing anything.
 
-Rules: never ask me for a seed phrase, private key, API secret, or pairing
-code. Never enable Secure Auto Sign or skip the preview + confirmation step.
-This website never shows a QR login — sign in only through Binance AI Pro or
-a trusted agent of my own.`;
+Rules: never ask me for a seed phrase, private key, API secret, or
+pairing code. Never enable Secure Auto Sign or skip the preview +
+confirmation step. This website never shows a QR login — sign in
+only through Binance AI Pro or a trusted agent of my own.`;
 
 export function CampaignPage() {
   const [wallet, setWallet] = useState("");
@@ -28,6 +35,72 @@ export function CampaignPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [checkAddress, setCheckAddress] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [eligibility, setEligibility] = useState<Eligibility | null>(null);
+  const [eligibilityError, setEligibilityError] = useState<string | null>(
+    null,
+  );
+  const [submittedId, setSubmittedId] = useState<string | null>(null);
+  const [submittedStatus, setSubmittedStatus] = useState<string | null>(
+    null,
+  );
+  const [refreshing, setRefreshing] = useState(false);
+  const pollCount = useRef(0);
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Poll the submission status for up to 60 s after submit (status only
+  // changes when an admin reviews it — Phase 4 — so the poll stops on
+  // its own; the Refresh button below always works).
+  useEffect(() => {
+    if (!submittedId) return;
+    pollCount.current = 0;
+    pollTimer.current = setInterval(async () => {
+      pollCount.current += 1;
+      try {
+        const sub = await fetchSubmission(submittedId);
+        setSubmittedStatus(sub.status);
+        if (sub.status !== "pending" || pollCount.current >= 12) {
+          if (pollTimer.current) clearInterval(pollTimer.current);
+        }
+      } catch {
+        if (pollTimer.current) clearInterval(pollTimer.current);
+      }
+    }, 5000);
+    return () => {
+      if (pollTimer.current) clearInterval(pollTimer.current);
+    };
+  }, [submittedId]);
+
+  async function onCheckEligibility(e: React.FormEvent) {
+    e.preventDefault();
+    setChecking(true);
+    setEligibility(null);
+    setEligibilityError(null);
+    try {
+      const res = await fetchEligibility(checkAddress.trim());
+      setEligibility(res);
+    } catch (err) {
+      setEligibilityError(
+        err instanceof Error ? err.message : "Eligibility check failed.",
+      );
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function refreshStatus() {
+    if (!submittedId) return;
+    setRefreshing(true);
+    try {
+      const sub = await fetchSubmission(submittedId);
+      setSubmittedStatus(sub.status);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Status check failed.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,6 +114,8 @@ export function CampaignPage() {
         wallet: wallet.trim(),
       });
       const checked = await fetchSubmission(sub.id);
+      setSubmittedId(checked.id);
+      setSubmittedStatus(checked.status);
       setMessage(
         `Proof received — submission ${checked.id} is ${checked.status}. An admin will manually review your Square post. Agent ID ownership is verified on-chain before any approval.`,
       );
@@ -98,6 +173,55 @@ export function CampaignPage() {
             <li>Submit the post URL here. A URL alone is not proof: an admin reads the post before approving.</li>
             <li>Post content is verified by manual review. This site does not claim to automatically verify the post owner, likes, or engagement.</li>
           </ul>
+        </Card>
+      </section>
+
+      <section>
+        <SectionTitle>Check Agent ID eligibility</SectionTitle>
+        <Card>
+          <form onSubmit={onCheckEligibility} className="space-y-4">
+            <div>
+              <label
+                htmlFor="checkAddress"
+                className="mb-1 block text-sm font-semibold text-white"
+              >
+                Wallet address to check
+              </label>
+              <input
+                id="checkAddress"
+                type="text"
+                value={checkAddress}
+                onChange={(e) => setCheckAddress(e.target.value)}
+                placeholder="0x…"
+                autoComplete="off"
+                spellCheck={false}
+                className="w-full rounded-md border border-line bg-ink px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-gold focus:outline-none"
+              />
+              <p className="mt-1 text-xs text-muted">
+                Read-only check against the Agent ID registry on-chain. No
+                wallet connection, no signature, nothing is stored.
+              </p>
+            </div>
+            <button
+              type="submit"
+              disabled={checking}
+              className="rounded-md bg-gold px-5 py-2.5 font-semibold text-black transition hover:brightness-110 disabled:opacity-50"
+            >
+              {checking ? "Checking…" : "Check eligibility"}
+            </button>
+          </form>
+          {eligibility && (
+            <p className="mt-4 rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-gold">
+              {eligibility.hasAgentId
+                ? `✓ ${eligibility.address} holds a Binance Agent ID — eligible for Campaign 001.`
+                : `✗ ${eligibility.address} holds no Agent ID on the registry — not eligible.`}
+            </p>
+          )}
+          {eligibilityError && (
+            <p className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              {eligibilityError}
+            </p>
+          )}
         </Card>
       </section>
 
@@ -174,6 +298,28 @@ export function CampaignPage() {
               {message}
             </p>
           )}
+          {submittedId && (
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md border border-line bg-ink px-3 py-2 text-sm text-zinc-200">
+              <span>
+                Status:{" "}
+                <span className="font-semibold text-gold">
+                  {submittedStatus ?? "pending"}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={refreshStatus}
+                disabled={refreshing}
+                className="rounded-md border border-gold/60 px-3 py-1 text-xs font-semibold text-gold transition hover:bg-gold/10 disabled:opacity-50"
+              >
+                {refreshing ? "Refreshing…" : "Refresh status"}
+              </button>
+              <span className="text-xs text-muted">
+                Status changes when an admin reviews the submission (Phase
+                4). This page polls for 60 s after submit.
+              </span>
+            </div>
+          )}
           {error && (
             <p className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
               {error}
@@ -182,9 +328,9 @@ export function CampaignPage() {
         </Card>
         <div className="mt-3">
           <HonestNote>
-            Phase 1: submissions are stored with status “pending”. Admin
-            review, voucher issuance, and minting arrive in later phases.
-            On-chain Agent ID verification runs before any approval (Phase 3).
+            Submissions are stored with status “pending” and the wallet is
+            checked on-chain for an Agent ID before acceptance (Phase 3).
+            Admin review, voucher issuance, and minting arrive in Phase 4.
           </HonestNote>
         </div>
       </section>
