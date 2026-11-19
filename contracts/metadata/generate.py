@@ -11,8 +11,8 @@ Shape matches the API route GET /metadata/:id
 image, external_url, attributes, note — and the same values for
 Campaign 001. The one intentional difference: the API's hardcoded
 `note` still says the artwork "ships with the contract (Phase 2)";
-the pinned files carry the final note. Update the API note to match
-before the mainnet launch so the two sources agree.
+the pinned files carry the final note. The API note was aligned to match
+(commit 1924523) so the two sources agree.
 
 Pinning is TWO steps (see docs/metadata.md) because the image URI
 contains the image file's own IPFS CID:
