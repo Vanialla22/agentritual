@@ -158,6 +158,7 @@ export interface AuditLogEntry {
   created_at: string;
   prev_hash: string | null;
   entry_hash: string | null;
+  seq: number | null;
 }
 
 export function fetchAuditLog(
@@ -170,9 +171,49 @@ export function fetchAuditLog(
 
 export function verifyAuditLog(
   token: string,
-): Promise<{ valid: boolean; checked: number; firstBadIndex?: number }> {
-  return api("/api/admin/audit-log/verify", {
+  expected?: { expectedLatest?: string; expectedCount?: number },
+): Promise<{
+  valid: boolean;
+  checked: number;
+  firstBadIndex?: number;
+  latestEntryHash: string | null;
+  latestSeq: number | null;
+  checkpointMatch: boolean | null;
+}> {
+  const q = expected
+    ? `?${new URLSearchParams({
+        ...(expected.expectedLatest
+          ? { expectedLatest: expected.expectedLatest }
+          : {}),
+        ...(expected.expectedCount !== undefined
+          ? { expectedCount: String(expected.expectedCount) }
+          : {}),
+      }).toString()}`
+    : "";
+  return api(`/api/admin/audit-log/verify${q}`, {
     headers: adminHeaders(token),
+  });
+}
+
+export function fetchAuditCheckpoint(
+  token: string,
+): Promise<{
+  checked: number;
+  computedAt: string;
+  latestEntryHash: string | null;
+  latestSeq: number | null;
+  valid: boolean;
+}> {
+  return api("/api/admin/audit-log/checkpoint", {
+    headers: adminHeaders(token),
+  });
+}
+
+export async function adminLogout(token: string): Promise<void> {
+  await api("/api/admin/logout", {
+    body: JSON.stringify({}),
+    headers: adminHeaders(token),
+    method: "POST",
   });
 }
 
@@ -182,6 +223,12 @@ export interface MintAuditEntry {
   tokenId: number;
   recipient: string;
   txHash: string;
+  classification: "matched" | "known-test" | "anomaly";
+  match: {
+    submissionId: string;
+    voucherDigest: string;
+    approvedAt: string | null;
+  } | null;
 }
 
 export function fetchMintAudit(
@@ -190,6 +237,8 @@ export function fetchMintAudit(
   checked: number;
   matched: MintAuditEntry[];
   unmatched: MintAuditEntry[];
+  knownTest: MintAuditEntry[];
+  anomalies: MintAuditEntry[];
   fromBlock: number;
 }> {
   return api("/api/admin/mint-audit", {

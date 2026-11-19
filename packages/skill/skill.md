@@ -173,6 +173,13 @@ checks Agent ID ownership on-chain before accepting. A URL alone is
 not proof: an admin reads the post before approving (manual review,
 Phase 4). The response is a submission with status `pending`.
 
+**Single-use:** a challenge verifies exactly once, and a proof token
+backs exactly one successful submission. If a submission fails for
+any other reason (wrong URL, no Agent ID, duplicate), the token is
+NOT burned — but once a submission succeeds, that token is spent.
+Request a fresh challenge for every new submission; never reuse a
+token or replay a challenge.
+
 ### 5. Check submission status
 
 ```bash

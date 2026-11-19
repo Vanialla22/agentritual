@@ -30,6 +30,27 @@ export const config = {
   // (self-approval block, Phase 0 prototype flaw). Unset = the block is
   // inactive and the server logs a warning at startup.
   adminWallet: (process.env.ADMIN_WALLET ?? "").toLowerCase() || "",
+  // Authorized campaigns (Phase 4 hardening review, finding H-6). Only
+  // these campaign IDs can receive submissions, reviews, and vouchers.
+  // Env is a comma-separated list, e.g. "001,002". Normalized to
+  // 3-digit strings ("1" and "001" both mean campaign 001).
+  authorizedCampaigns: (process.env.AUTHORIZED_CAMPAIGNS ?? "001")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => String(Number(s)).padStart(3, "0")),
+  // Historical test-mint tx hashes (Phase 2/3/4 e2e test mints: tokens
+  // #0, #1, #2). GET /api/admin/mint-audit classifies these as
+  // "known-test" instead of anomalies — they predate the voucher flow
+  // (or were minted by test scripts) and have no voucher record in any
+  // DB. Any OTHER mint without a voucher is an anomaly/alert.
+  knownTestMintTxHashes: (
+    process.env.KNOWN_TEST_MINT_TX_HASHES ??
+    "0xf421e95f8e92e163fccc0364629befc2276369c787577db9eb0c36d121bf05cf,0x525948cc7f61bef95caa88cd71d981c3edc2aa45e2307f263fc723f5f9a44f0d,0xda53184dd618dd6ca95296205feb26ff626cd1b17ef9df9bde6a7c6ef0a576a2"
+  )
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
   // First block of the NFT contract (Phase 2 testnet deploy: 143587234).
   // Used by GET /api/admin/mint-audit as the Mint-event scan start.
   // 0 = fall back to a trailing 5,000-block window.
@@ -58,3 +79,12 @@ export const config = {
     .map((s) => s.trim())
     .filter(Boolean),
 };
+
+/** True when the campaign id (e.g. "001", "1", 1) is allowlisted. */
+export function isAuthorizedCampaign(id: string | number): boolean {
+  const n = Number(id);
+  if (!Number.isSafeInteger(n) || n < 0) return false;
+  return config.authorizedCampaigns.includes(
+    String(n).padStart(3, "0"),
+  );
+}

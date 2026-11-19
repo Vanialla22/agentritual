@@ -32,6 +32,15 @@ export function checkRateLimit(opts: RateLimitOptions, req: FastifyRequest): {
 } {
   const id = `${opts.key}:${opts.identity(req)}`;
   const now = Date.now();
+  // Bound memory: drop buckets idle for over an hour when the map grows.
+  // (Hardening review H-4: without this, one bucket per distinct IP /
+  // wallet accumulates forever in a long-lived process.)
+  if (buckets.size > 5000) {
+    const cutoff = now - 60 * 60_000;
+    for (const [k, b] of buckets) {
+      if (b.lastRefillMs < cutoff) buckets.delete(k);
+    }
+  }
   let bucket = buckets.get(id);
   if (!bucket) {
     bucket = { lastRefillMs: now, tokens: opts.capacity };

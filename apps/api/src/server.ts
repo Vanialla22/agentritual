@@ -2,7 +2,7 @@ import cors from "@fastify/cors";
 import Fastify from "fastify";
 import { config } from "./config";
 import { getDb, migrate } from "./db";
-import { backfillAuditLogChain } from "./auditLog";
+import { backfillAuditLogChain, backfillAuditLogSeq } from "./auditLog";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerEligibilityRoutes } from "./routes/eligibility";
@@ -16,10 +16,15 @@ export async function buildServer() {
 
   const db = getDb();
   await migrate(db);
-  // Chain any audit-log rows written before Phase 4 (migration 004).
+  // Chain any audit-log rows written before Phase 4 (migration 004)
+  // and assign sequence numbers to rows written before migration 005.
   const backfilled = await backfillAuditLogChain(db);
   if (backfilled > 0) {
     app.log.info(`audit_log: backfilled hash chain for ${backfilled} rows`);
+  }
+  const seqFilled = await backfillAuditLogSeq(db);
+  if (seqFilled > 0) {
+    app.log.info(`audit_log: backfilled seq for ${seqFilled} rows`);
   }
   if (!config.adminWallet) {
     app.log.warn(
@@ -44,7 +49,7 @@ export async function buildServer() {
   registerEligibilityRoutes(app);
   registerTrackerRoutes(app);
   registerMetadataRoutes(app);
-  registerAuthRoutes(app);
+  registerAuthRoutes(app, db);
   registerAdminRoutes(app, db);
 
   return app;

@@ -245,6 +245,11 @@ contract AgentRitualNFTTest is Test {
         public
     {
         vm.assume(user != address(0));
+        // _grant uses _safeMint, which reverts for a recipient contract
+        // that does not implement onERC721Received; the fuzzer's
+        // dictionary includes the deployed contract addresses, so exclude
+        // all code-bearing addresses (test-only; audited contract untouched).
+        vm.assume(user.code.length == 0);
         vm.assume(sig.length > 0);
         uint256 deadline = block.timestamp + bound(deadlineOffset, 1, 7 days);
         bytes32 nonce = keccak256(abi.encode(sig, user, deadlineOffset));
@@ -262,6 +267,14 @@ contract AgentRitualNFTTest is Test {
         uint256 deadline = block.timestamp + bound(deadlineOffset, 1, 30 days);
         address user = address(uint160(bound(uint256(nonce), 1, type(uint160).max)));
         vm.assume(user != address(0));
+        // Both the mock registry and the NFT use _safeMint, which reverts
+        // for a recipient contract that does not implement
+        // onERC721Received. The fuzzer's dictionary includes the deployed
+        // contract addresses, so a fuzzed `user` can BE the NFT contract
+        // itself — that reverts in _grant, not in the voucher logic under
+        // test. Exclude all code-bearing addresses (test-only fix; the
+        // audited contract is untouched).
+        vm.assume(user.code.length == 0);
         _grant(user);
         _mintAs(user, campaignId, deadline, nonce);
         assertEq(nft.ownerOf(0), user);

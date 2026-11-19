@@ -3,10 +3,10 @@ import type { FastifyInstance } from "fastify";
 import { ethers } from "ethers";
 import type { Db } from "../db";
 import { getAgentIdBalance } from "../agentId";
-import { verifyProofToken } from "../auth";
+import { consumeProofToken, isProofTokenUsed, verifyProofToken } from "../auth";
 import { appendAuditLog } from "../auditLog";
 import { checkRateLimit, clientIp } from "../rateLimit";
-import { config } from "../config";
+import { config, isAuthorizedCampaign } from "../config";
 
 export interface SubmissionRow {
   id: string;
@@ -61,6 +61,15 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
       });
     }
 
+    // Campaign allowlist (hardening review H-6): only authorized
+    // campaigns accept submissions. Checked before any rate-limit or
+    // proof work, so an unauthorized campaign can never reach review.
+    if (!isAuthorizedCampaign(campaignId)) {
+      return reply.status(400).send({
+        error: `campaign ${campaignId} is not authorized`,
+      });
+    }
+
     // Rate limits: 5/hour per wallet, 20/hour per IP.
     const walletLimit = checkRateLimit(
       {
@@ -99,10 +108,18 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
     // must prove they control the wallet by signing a challenge
     // (GET /api/auth/challenge → POST /api/auth/verify). Without a
     // valid proof token bound to this wallet, the submission is refused.
+    // Proof tokens are single-use (hardening review H-1): a token that
+    // already backed a submission is refused here.
     if (!proofToken || !verifyProofToken(proofToken, wallet)) {
       return reply.status(401).send({
         error:
           "prove wallet ownership first: GET /api/auth/challenge, sign the message, POST /api/auth/verify, then submit with the returned proofToken",
+      });
+    }
+    if (await isProofTokenUsed(db, proofToken)) {
+      return reply.status(401).send({
+        error:
+          "proof token already used — request a new challenge and verify again",
       });
     }
 
@@ -149,6 +166,17 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
 
     const id = randomUUID();
     const createdAt = new Date().toISOString();
+    // Consume the proof token only now that every other check has
+    // passed, so a failed submission (409/503) does not burn it. The
+    // UNIQUE constraint on used_proof_tokens is the atomic guard
+    // against two concurrent submissions racing on the same token.
+    const consumed = await consumeProofToken(db, proofToken, wallet);
+    if (!consumed) {
+      return reply.status(401).send({
+        error:
+          "proof token already used — request a new challenge and verify again",
+      });
+    }
     await db.run(
       "INSERT INTO submissions (id, wallet, square_url, campaign_id, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
       [id, wallet.toLowerCase(), squareUrl, campaignId, createdAt],

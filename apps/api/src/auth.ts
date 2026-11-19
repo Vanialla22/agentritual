@@ -1,10 +1,12 @@
 import {
+  createHash,
   createHmac,
   randomBytes,
   scryptSync,
   timingSafeEqual,
 } from "node:crypto";
 import { config } from "./config";
+import type { Db } from "./db";
 
 /**
  * Admin auth + wallet-ownership proof tokens (Phase 4).
@@ -77,6 +79,8 @@ export interface AdminSessionPayload {
   sub: "admin";
   iat: number;
   exp: number;
+  /** Random id: two logins in the same second must not mint the same token. */
+  jti: string;
 }
 
 export interface ProofTokenPayload {
@@ -84,6 +88,8 @@ export interface ProofTokenPayload {
   address: string;
   iat: number;
   exp: number;
+  /** Random id: two verifies in the same second must not mint the same token. */
+  jti: string;
 }
 
 export const ADMIN_SESSION_TTL_SECONDS = 2 * 60 * 60; // 2 h
@@ -126,6 +132,7 @@ export function createAdminSession(): string | null {
   const payload: AdminSessionPayload = {
     exp: now + ADMIN_SESSION_TTL_SECONDS,
     iat: now,
+    jti: randomBytes(16).toString("hex"),
     sub: "admin",
   };
   return signToken(config.adminSessionSecret, payload);
@@ -149,6 +156,7 @@ export function createProofToken(address: string): string | null {
     address: address.toLowerCase(),
     exp: now + PROOF_TOKEN_TTL_SECONDS,
     iat: now,
+    jti: randomBytes(16).toString("hex"),
     sub: "ownership-proof",
   };
   return signToken(config.authSecret, payload);
@@ -235,4 +243,102 @@ export function verifyChallengeTag(
   } catch {
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Single-use tracking + session revocation (Phase 4 hardening review)
+// ---------------------------------------------------------------------------
+
+/** SHA-256 of a token — what is stored, never the token itself. */
+export function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    err instanceof Error && /UNIQUE constraint failed/i.test(err.message)
+  );
+}
+
+/**
+ * Mark a challenge nonce as used. Returns false when the nonce was
+ * already consumed (replay) — the UNIQUE constraint on
+ * used_challenges.nonce is the atomic guard, so two concurrent verifies
+ * of the same challenge cannot both succeed. Any other DB error is
+ * rethrown (never silently treated as "already used").
+ */
+export async function consumeChallenge(
+  db: Db,
+  nonce: string,
+  address: string,
+): Promise<boolean> {
+  try {
+    await db.run(
+      "INSERT INTO used_challenges (nonce, address, used_at) VALUES (?, ?, ?)",
+      [nonce, address.toLowerCase(), new Date().toISOString()],
+    );
+    return true;
+  } catch (err) {
+    if (isUniqueViolation(err)) return false;
+    throw err;
+  }
+}
+
+/**
+ * Mark a proof token as used (exactly one successful submission per
+ * token). Returns false when the token was already consumed. Call this
+ * only after all other submission validation has passed, so a failed
+ * submission (400/403/409/503) does not burn the token.
+ */
+export async function consumeProofToken(
+  db: Db,
+  token: string,
+  address: string,
+): Promise<boolean> {
+  try {
+    await db.run(
+      "INSERT INTO used_proof_tokens (token_hash, address, used_at) VALUES (?, ?, ?)",
+      [hashToken(token), address.toLowerCase(), new Date().toISOString()],
+    );
+    return true;
+  } catch (err) {
+    if (isUniqueViolation(err)) return false;
+    throw err;
+  }
+}
+
+/** True when the proof token was already consumed by a submission. */
+export async function isProofTokenUsed(
+  db: Db,
+  token: string,
+): Promise<boolean> {
+  const row = await db.get<{ token_hash: string }>(
+    "SELECT token_hash FROM used_proof_tokens WHERE token_hash = ?",
+    [hashToken(token)],
+  );
+  return !!row;
+}
+
+/** Revoke an admin session token (logout). Idempotent. */
+export async function revokeAdminSession(
+  db: Db,
+  token: string,
+  expiresAt: number,
+): Promise<void> {
+  await db.run(
+    "INSERT OR IGNORE INTO revoked_sessions (token_hash, revoked_at, expires_at) VALUES (?, ?, ?)",
+    [hashToken(token), new Date().toISOString(), expiresAt],
+  );
+}
+
+/** True when the admin session token was revoked via logout. */
+export async function isAdminSessionRevoked(
+  db: Db,
+  token: string,
+): Promise<boolean> {
+  const row = await db.get<{ token_hash: string }>(
+    "SELECT token_hash FROM revoked_sessions WHERE token_hash = ?",
+    [hashToken(token)],
+  );
+  return !!row;
 }

@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Card, GoldButton, HonestNote, SectionTitle } from "../App";
 import {
   adminLogin,
+  adminLogout,
   adminReview,
   fetchAdminSubmissions,
+  fetchAuditCheckpoint,
   fetchAuditLog,
   fetchMintAudit,
   verifyAuditLog,
@@ -32,9 +34,27 @@ export function AdminPage() {
     checked: number;
     matched: MintAuditEntry[];
     unmatched: MintAuditEntry[];
+    knownTest: MintAuditEntry[];
+    anomalies: MintAuditEntry[];
     fromBlock: number;
   } | null>(null);
   const [mintError, setMintError] = useState<string | null>(null);
+  const [checkpoint, setCheckpoint] = useState<string | null>(null);
+
+  async function onLogout() {
+    if (!token) return;
+    try {
+      await adminLogout(token);
+    } catch {
+      // Even if the server call fails, drop the local session.
+    }
+    setToken(null);
+    setQueue([]);
+    setAudit([]);
+    setMintAudit(null);
+    setAuditValid(null);
+    setCheckpoint(null);
+  }
 
   async function loadQueue(t: string) {
     setQueueBusy(true);
@@ -102,12 +122,17 @@ export function AdminPage() {
   async function onVerifyAudit() {
     if (!token) return;
     setAuditValid(null);
+    setCheckpoint(null);
     try {
       const res = await verifyAuditLog(token);
       setAuditValid(
         res.valid
           ? `✓ Chain valid — ${res.checked} entries verified.`
           : `✗ Chain BROKEN at entry #${res.firstBadIndex} of ${res.checked}.`,
+      );
+      const cp = await fetchAuditCheckpoint(token);
+      setCheckpoint(
+        `Latest checkpoint: ${cp.latestEntryHash?.slice(0, 16)}… (seq ${cp.latestSeq}, ${cp.checked} entries). Record this hash outside this database — a full-chain rewrite is only detectable by comparing against an external checkpoint.`,
       );
     } catch (err) {
       setAuditValid(err instanceof Error ? err.message : "Verify failed.");
@@ -183,14 +208,23 @@ export function AdminPage() {
           <section>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <SectionTitle>Pending submissions</SectionTitle>
-              <button
-                type="button"
-                onClick={() => loadQueue(token)}
-                disabled={queueBusy}
-                className="rounded-md border border-gold/60 px-3 py-1.5 text-xs font-semibold text-gold transition hover:bg-gold/10 disabled:opacity-50"
-              >
-                {queueBusy ? "Refreshing…" : "Refresh queue"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => loadQueue(token)}
+                  disabled={queueBusy}
+                  className="rounded-md border border-gold/60 px-3 py-1.5 text-xs font-semibold text-gold transition hover:bg-gold/10 disabled:opacity-50"
+                >
+                  {queueBusy ? "Refreshing…" : "Refresh queue"}
+                </button>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="rounded-md border border-red-500/60 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
+                >
+                  Sign out (revokes session)
+                </button>
+              </div>
             </div>
             {queueError && (
               <p className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
@@ -311,6 +345,11 @@ export function AdminPage() {
                 {auditValid}
               </p>
             )}
+            {checkpoint && (
+              <p className="mt-3 rounded-md border border-line bg-ink px-3 py-2 text-xs text-muted">
+                {checkpoint}
+              </p>
+            )}
             {audit.length > 0 && (
               <Card>
                 <ul className="space-y-2 text-sm">
@@ -356,21 +395,21 @@ export function AdminPage() {
                 <p className="text-sm text-zinc-200">
                   Checked {mintAudit.checked} Mint events from block{" "}
                   {mintAudit.fromBlock}: {mintAudit.matched.length} matched a
-                  voucher,{" "}
+                  voucher, {mintAudit.knownTest.length} known test mints,{" "}
                   <span className="font-semibold text-gold">
-                    {mintAudit.unmatched.length} unmatched
+                    {mintAudit.anomalies.length} anomalies
                   </span>
                   .
                 </p>
-                {mintAudit.unmatched.length > 0 && (
+                {mintAudit.anomalies.length > 0 && (
                   <ul className="mt-3 space-y-2 text-sm">
-                    {mintAudit.unmatched.map((m) => (
+                    {mintAudit.anomalies.map((m) => (
                       <li
                         key={m.txHash}
-                        className="border-b border-line pb-2 last:border-0"
+                        className="border-b border-red-500/40 pb-2 last:border-0"
                       >
-                        <span className="font-semibold text-white">
-                          token #{m.tokenId}
+                        <span className="font-semibold text-red-300">
+                          ⚠ ANOMALY — token #{m.tokenId}
                         </span>{" "}
                         <span className="break-all font-mono text-xs text-muted">
                           {m.recipient}
@@ -378,9 +417,19 @@ export function AdminPage() {
                         <span className="font-mono text-xs text-gold">
                           {m.txHash.slice(0, 10)}…{m.txHash.slice(-8)}
                         </span>
+                        <span className="block text-xs text-muted">
+                          Mint with no voucher record — investigate before
+                          any further approvals.
+                        </span>
                       </li>
                     ))}
                   </ul>
+                )}
+                {mintAudit.unmatched.length > 0 && mintAudit.anomalies.length === 0 && (
+                  <p className="mt-3 text-sm text-muted">
+                    {mintAudit.unmatched.length} unmatched mints — all are
+                    documented historical test mints (known-test).
+                  </p>
                 )}
               </Card>
             )}

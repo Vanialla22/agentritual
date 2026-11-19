@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { config } from "./config";
+import { config, isAuthorizedCampaign } from "./config";
 
 /**
  * EIP-712 claim voucher (Phase 2 contract verifies this exact shape).
@@ -90,6 +90,11 @@ export const MAX_VOUCHER_TTL_SECONDS = 60 * 60;
 export async function signVoucher(voucher: ClaimVoucher): Promise<string> {
   if (!config.adminSignerKey) {
     throw new Error("voucher signing not configured");
+  }
+  // Campaign allowlist (hardening review H-6): no caller — not even the
+  // admin review flow — can sign a voucher for an unauthorized campaign.
+  if (!isAuthorizedCampaign(voucher.campaignId)) {
+    throw new Error(`campaign ${voucher.campaignId} is not authorized`);
   }
   const now = Math.floor(Date.now() / 1000);
   if (

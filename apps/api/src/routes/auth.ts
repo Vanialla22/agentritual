@@ -1,9 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { ethers } from "ethers";
 import { config } from "../config";
+import type { Db } from "../db";
 import {
   buildChallenge,
   challengeTag,
+  consumeChallenge,
   createProofToken,
   parseChallengeMessage,
   verifyChallengeTag,
@@ -26,7 +28,7 @@ import { checkRateLimit, clientIp } from "../rateLimit";
  * so it cannot personal-sign this challenge. Sign it with the agent's
  * own personal-sign capability (ethers/cast/AI Pro) instead.
  */
-export function registerAuthRoutes(app: FastifyInstance) {
+export function registerAuthRoutes(app: FastifyInstance, db: Db) {
   app.get("/api/auth/challenge", async (req, reply) => {
     const { address } = (req.query ?? {}) as { address?: unknown };
     if (typeof address !== "string" || !ethers.isAddress(address)) {
@@ -116,6 +118,17 @@ export function registerAuthRoutes(app: FastifyInstance) {
     if (recovered.toLowerCase() !== address.toLowerCase()) {
       return reply.status(403).send({
         error: "signature does not match the address — proof failed",
+      });
+    }
+    // Single-use (hardening review H-1): a challenge nonce verifies
+    // exactly once. The UNIQUE constraint on used_challenges.nonce is
+    // the atomic guard, so two concurrent verifies cannot both succeed.
+    // Consumed only AFTER the signature checks out, so a failed verify
+    // does not burn the challenge.
+    const consumed = await consumeChallenge(db, parsed.nonce, address);
+    if (!consumed) {
+      return reply.status(400).send({
+        error: "challenge already used — request a new one",
       });
     }
     const proofToken = createProofToken(address);

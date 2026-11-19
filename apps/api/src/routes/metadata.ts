@@ -1,9 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import { config } from "../config";
+import { config, isAuthorizedCampaign } from "../config";
 
 // Token IDs are globally sequential starting at 0 (audit I-2): Campaign 001
-// mints 0–999, later campaigns continue from 1,000. 100,000 covers the
-// first 100 campaigns; the route does not check on-chain existence.
+// mints 0–999, later campaigns continue from 1,000. The campaign for a
+// token is floor(tokenId / 1000) + 1. Only authorized campaigns return
+// metadata — a token from an unauthorized campaign 404s instead of
+// returning another campaign's attributes (hardening review H-6).
 const MAX_TOKEN_ID = 100_000;
 
 /**
@@ -21,13 +23,17 @@ export function registerMetadataRoutes(app: FastifyInstance) {
     if (!Number.isSafeInteger(tokenId) || tokenId < 0 || tokenId >= MAX_TOKEN_ID) {
       return reply.status(404).send({ error: "token not found" });
     }
+    const campaignId = String(Math.floor(tokenId / 1000) + 1).padStart(3, "0");
+    if (!isAuthorizedCampaign(campaignId)) {
+      return reply.status(404).send({ error: "token not found" });
+    }
     return {
       attributes: [
-        { trait_type: "Campaign", value: "001 — The Genesis Quest" },
+        { trait_type: "Campaign", value: `${campaignId} — The Genesis Quest` },
         { trait_type: "Collection", value: "Genesis Seal" },
       ],
       description:
-        "AgentRitual Genesis Seal — minted by completing Campaign 001 with a Binance Agent ID. Max supply 1,000, one per wallet.",
+        `AgentRitual Genesis Seal — minted by completing Campaign ${campaignId} with a Binance Agent ID. Max supply 1,000, one per wallet.`,
       external_url: "",
       image: config.nftImageUrl || null,
       name: `AgentRitual Genesis Seal #${tokenId}`,

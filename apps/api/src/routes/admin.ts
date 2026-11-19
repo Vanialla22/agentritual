@@ -1,9 +1,11 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { ethers, type EventLog } from "ethers";
 import type { Db } from "../db";
-import { config } from "../config";
+import { config, isAuthorizedCampaign } from "../config";
 import {
   createAdminSession,
+  isAdminSessionRevoked,
+  revokeAdminSession,
   verifyAdminPassword,
   verifyAdminSession,
 } from "../auth";
@@ -18,17 +20,25 @@ import {
 } from "../voucher";
 
 /**
- * Admin endpoints (Phase 4).
+ * Admin endpoints (Phase 4, hardened in the Phase 4 review).
  *
  * - POST /api/admin/login {password} → {token} (2 h HMAC session).
- * - All other /api/admin/* routes require `Authorization: Bearer <token>`.
+ * - POST /api/admin/logout → revokes the current session token.
+ * - All other /api/admin/* routes require `Authorization: Bearer <token>`
+ *   and reject revoked tokens.
  * - POST /api/admin/review {submissionId, decision, note?} — approve
  *   signs a voucher (deadline ≤ 1 h) and stores it; reject stores the
- *   note. Self-approval is blocked server-side when ADMIN_WALLET is set.
+ *   note. Self-APPROVAL is blocked server-side when ADMIN_WALLET is set
+ *   (rejecting your own submission is allowed). Unauthorized campaigns
+ *   are refused (400).
  * - GET  /api/admin/submissions?status=pending — review queue.
  * - GET  /api/admin/audit-log (+ ?limit=&offset=) — hash-chained log.
- * - GET  /api/admin/audit-log/verify — recompute the chain.
- * - GET  /api/admin/mint-audit — Mint events without a matching voucher.
+ * - GET  /api/admin/audit-log/verify (+ ?expectedLatest=&expectedCount=)
+ *   — recompute the chain, optionally against an external checkpoint.
+ * - GET  /api/admin/audit-log/checkpoint — latest hash/seq/count, for
+ *   recording outside this database.
+ * - GET  /api/admin/mint-audit — Mint events matched to vouchers, with
+ *   known-test mints separated from anomalies.
  *
  * The audit log is append-only: no UPDATE/DELETE endpoint exists, ever.
  */
@@ -53,10 +63,23 @@ interface VoucherRow {
   created_at: string;
 }
 
-function requireAdmin(req: FastifyRequest): boolean {
+/**
+ * Admin session check: valid HMAC token (signature + expiry) AND not
+ * revoked via logout. Revocation is a DB lookup (hardening review H-2);
+ * without it, a stolen or logged-out token would stay valid until expiry.
+ */
+async function requireAdmin(req: FastifyRequest, db: Db): Promise<boolean> {
   const header = req.headers.authorization ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  return token !== "" && verifyAdminSession(token) !== null;
+  if (token === "") return false;
+  if (verifyAdminSession(token) === null) return false;
+  if (await isAdminSessionRevoked(db, token)) return false;
+  return true;
+}
+
+function bearerToken(req: FastifyRequest): string {
+  const header = req.headers.authorization ?? "";
+  return header.startsWith("Bearer ") ? header.slice(7) : "";
 }
 
 export function registerAdminRoutes(app: FastifyInstance, db: Db) {
@@ -107,11 +130,28 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db) {
     if (!url.startsWith("/api/admin/") || url === "/api/admin/login") {
       return;
     }
-    if (!requireAdmin(req)) {
+    if (!(await requireAdmin(req, db))) {
       return reply.status(401).send({
         error: "admin authentication required",
       });
     }
+  });
+
+  // Logout (hardening review H-2): revokes the current session token
+  // server-side, so it stops working immediately — before its 2 h
+  // expiry. The token hash (never the token) is stored in
+  // revoked_sessions; rotation of ADMIN_SESSION_SECRET also kills all
+  // sessions (see docs/admin-rights.md).
+  app.post("/api/admin/logout", async (req, reply) => {
+    const token = bearerToken(req);
+    const payload = verifyAdminSession(token);
+    if (!payload) {
+      return reply.status(401).send({
+        error: "admin authentication required",
+      });
+    }
+    await revokeAdminSession(db, token, payload.exp);
+    return { revoked: true };
   });
 
   app.get("/api/admin/submissions", async (req, reply) => {
@@ -163,11 +203,27 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db) {
         error: `submission is already ${sub.status} — only pending submissions can be decided`,
       });
     }
+    // Campaign allowlist (hardening review H-6, defense in depth):
+    // a submission for an unauthorized campaign can never be decided,
+    // even if it was inserted before the allowlist existed.
+    if (!isAuthorizedCampaign(sub.campaign_id)) {
+      return reply.status(400).send({
+        error: `campaign ${sub.campaign_id} is not authorized`,
+      });
+    }
     // Self-approval block (Phase 0 prototype flaw, enforced server-side):
-    // the admin cannot decide a submission from their own wallet.
-    if (config.adminWallet && sub.wallet.toLowerCase() === config.adminWallet) {
+    // the admin cannot APPROVE a submission from their own wallet —
+    // approval issues a voucher to themselves. REJECT is allowed: it
+    // denies value rather than granting it, and blocking it would leave
+    // the admin's own submissions undecidable forever (hardening review
+    // H-2: the Phase 4 block covered both decisions).
+    if (
+      decision === "approve" &&
+      config.adminWallet &&
+      sub.wallet.toLowerCase() === config.adminWallet
+    ) {
       return reply.status(403).send({
-        error: "admin cannot review their own submission",
+        error: "admin cannot approve their own submission",
       });
     }
     const reviewedAt = new Date().toISOString();
@@ -262,8 +318,45 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db) {
     return { items: rows, limit: lim, offset: off };
   });
 
-  app.get("/api/admin/audit-log/verify", async () => {
-    return verifyAuditLogChain(db);
+  app.get("/api/admin/audit-log/verify", async (req) => {
+    const result = await verifyAuditLogChain(db);
+    // External checkpoint comparison (hardening review H-3): pass the
+    // latest entry hash + count recorded OUTSIDE this database (see
+    // docs/admin-rights.md). A full-chain rewrite recomputes every
+    // hash, so verify() alone reports valid=true — only the checkpoint
+    // comparison catches it. checkpointMatch is null when no expected
+    // values were supplied.
+    const { expectedLatest, expectedCount } = (req.query ?? {}) as {
+      expectedLatest?: unknown;
+      expectedCount?: unknown;
+    };
+    let checkpointMatch: boolean | null = null;
+    if (typeof expectedLatest === "string" && expectedLatest) {
+      checkpointMatch =
+        result.latestEntryHash === expectedLatest.toLowerCase();
+    }
+    if (typeof expectedCount === "string" && expectedCount !== "") {
+      const n = Number(expectedCount);
+      if (Number.isSafeInteger(n)) {
+        checkpointMatch = (checkpointMatch ?? true) && result.checked === n;
+      }
+    }
+    return { ...result, checkpointMatch };
+  });
+
+  // Latest checkpoint values, for recording OUTSIDE this database.
+  // An admin records {latestEntryHash, latestSeq, count} after each
+  // review session (a note, a second server, a public post, or an
+  // on-chain anchor) and later verifies against them.
+  app.get("/api/admin/audit-log/checkpoint", async () => {
+    const result = await verifyAuditLogChain(db);
+    return {
+      checked: result.checked,
+      computedAt: new Date().toISOString(),
+      latestEntryHash: result.latestEntryHash,
+      latestSeq: result.latestSeq,
+      valid: result.valid,
+    };
   });
 
   app.get("/api/admin/mint-audit", async (_req, reply) => {
@@ -291,42 +384,97 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db) {
         fromBlock,
         latestBlock,
       )) as EventLog[];
-      const vouchers = await db.all<VoucherRow & { campaign_id: string }>(
+      // Match each mint against its voucher AND the approval record.
+      // A voucher is identified by (recipient, campaign); the digest is
+      // recomputed from the stored voucher fields so the response shows
+      // exactly which signed voucher the mint corresponds to.
+      const vouchers = await db.all<
+        VoucherRow & { campaign_id: string; submission_id: string }
+      >(
         `SELECT v.*, s.campaign_id FROM vouchers v
          JOIN submissions s ON s.id = v.submission_id`,
       );
-      const voucherKeys = new Set(
-        vouchers.map(
-          (v) => `${v.recipient.toLowerCase()}|${Number(v.campaign_id)}`,
-        ),
+      const domain = getVoucherDomain();
+      const voucherByKey = new Map(
+        vouchers.map((v) => {
+          const digest = ethers.TypedDataEncoder.hash(
+            domain,
+            VOUCHER_TYPES,
+            {
+              campaignId: Number(v.campaign_id),
+              deadline: v.deadline,
+              nonce: v.nonce,
+              recipient: v.recipient,
+            },
+          );
+          return [
+            `${v.recipient.toLowerCase()}|${Number(v.campaign_id)}`,
+            {
+              approvedAt: null as string | null,
+              digest,
+              submissionId: v.submission_id,
+            },
+          ];
+        }),
       );
+      const approvals = await db.all<{
+        submission_id: string;
+        created_at: string;
+      }>(
+        "SELECT submission_id, created_at FROM audit_log WHERE action = 'submission_approved'",
+      );
+      for (const a of approvals) {
+        for (const v of voucherByKey.values()) {
+          if (v.submissionId === a.submission_id) v.approvedAt = a.created_at;
+        }
+      }
+      const knownTest = new Set(config.knownTestMintTxHashes);
       const matched: unknown[] = [];
       const unmatched: unknown[] = [];
+      const knownTestMints: unknown[] = [];
+      const anomalies: unknown[] = [];
       for (const ev of events) {
         const campaignId = Number(ev.args?.[0] as bigint);
         const tokenId = Number(ev.args?.[1] as bigint);
         const recipient = ((ev.args?.[2] as string) ?? "").toLowerCase();
+        const txHash = ev.transactionHash;
+        const match =
+          voucherByKey.get(`${recipient}|${campaignId}`) ?? null;
+        // Classification (hardening review H-5): a mint with a voucher
+        // is "matched"; a mint whose tx hash is in the documented
+        // historical test-mint list is "known-test"; anything else is
+        // an "anomaly" — a mint with no voucher record, which must be
+        // investigated (signer compromise, contract misuse, or a
+        // voucher issued outside this API).
+        const classification = match
+          ? "matched"
+          : knownTest.has(txHash.toLowerCase())
+            ? "known-test"
+            : "anomaly";
         const entry = {
           blockNumber: ev.blockNumber,
           campaignId,
+          classification,
+          match,
           recipient,
           tokenId,
-          txHash: ev.transactionHash,
+          txHash,
         };
-        // A mint matches when a voucher exists for the same recipient
-        // and campaign (campaign stored as "001" in submissions, 1
-        // on-chain — compare numerically).
-        if (voucherKeys.has(`${recipient}|${campaignId}`)) {
+        if (match) {
           matched.push(entry);
         } else {
           unmatched.push(entry);
+          if (classification === "known-test") knownTestMints.push(entry);
+          else anomalies.push(entry);
         }
       }
       return {
+        anomalies,
         chainId: config.chainId,
         checked: events.length,
         contractAddress: config.nftContractAddress,
         fromBlock,
+        knownTest: knownTestMints,
         matched,
         unmatched,
       };
