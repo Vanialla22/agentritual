@@ -5,6 +5,7 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -25,7 +26,11 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 ///      mints ids 0-999 (matching the API metadata range). A per-campaign
 ///      counter was considered and rejected — it would collide token IDs
 ///      across campaigns (proven by test_OneMintPerWalletPerCampaign).
-contract AgentRitualNFT is ERC721, EIP712, Ownable, Pausable, ReentrancyGuard {
+/// @dev Ownership is two-step (audit L-2, Phase 5 prep): transferOwnership
+///      only sets a pending owner; the new owner must call
+///      acceptOwnership() before any admin power moves. A mistaken
+///      transfer is recoverable — the old owner stays owner until accept.
+contract AgentRitualNFT is ERC721, EIP712, Ownable2Step, Pausable, ReentrancyGuard {
     uint256 public constant MAX_SUPPLY_PER_CAMPAIGN = 1000;
 
     bytes32 public constant VOUCHER_TYPEHASH =

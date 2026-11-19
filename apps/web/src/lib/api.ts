@@ -240,6 +240,11 @@ export function fetchMintAudit(
   knownTest: MintAuditEntry[];
   anomalies: MintAuditEntry[];
   fromBlock: number;
+  latestBlock: number;
+  // M-1 fix: true when NFT_DEPLOY_BLOCK is unset and the scan covered
+  // only the trailing 5,000 blocks — a "0 anomalies" answer from a
+  // truncated scan is NOT a clean bill.
+  windowTruncated: boolean;
 }> {
   return api("/api/admin/mint-audit", {
     headers: adminHeaders(token),

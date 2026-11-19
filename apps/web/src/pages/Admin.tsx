@@ -37,6 +37,8 @@ export function AdminPage() {
     knownTest: MintAuditEntry[];
     anomalies: MintAuditEntry[];
     fromBlock: number;
+    latestBlock: number;
+    windowTruncated: boolean;
   } | null>(null);
   const [mintError, setMintError] = useState<string | null>(null);
   const [checkpoint, setCheckpoint] = useState<string | null>(null);
@@ -392,7 +394,24 @@ export function AdminPage() {
             )}
             {mintAudit && (
               <Card>
-                <p className="text-sm text-zinc-200">
+                {mintAudit.windowTruncated ? (
+                  <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                    ⚠ Truncated window — NFT_DEPLOY_BLOCK is not set on the
+                    API, so this scan covered only blocks{" "}
+                    {mintAudit.fromBlock}–{mintAudit.latestBlock} (trailing
+                    5,000). Mints before block {mintAudit.fromBlock} are NOT
+                    covered, and &ldquo;{mintAudit.anomalies.length}{" "}
+                    anomalies&rdquo; is NOT a clean bill. Set NFT_DEPLOY_BLOCK
+                    to the contract&rsquo;s deployment block and re-run.
+                  </p>
+                ) : (
+                  <p className="rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-gold">
+                    ✓ Full window — scanned blocks {mintAudit.fromBlock}–
+                    {mintAudit.latestBlock} from the contract deployment
+                    block. All mints are covered.
+                  </p>
+                )}
+                <p className="mt-3 text-sm text-zinc-200">
                   Checked {mintAudit.checked} Mint events from block{" "}
                   {mintAudit.fromBlock}: {mintAudit.matched.length} matched a
                   voucher, {mintAudit.knownTest.length} known test mints,{" "}
