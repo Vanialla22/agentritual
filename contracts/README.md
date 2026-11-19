@@ -1,9 +1,10 @@
 # contracts/ — Foundry (Phase 2 ✅ complete, TESTNET DEPLOYED)
 
 **Contract code + tests: DONE.** `AgentRitualNFT.sol` + `MockAgentIdRegistry.sol`
-written, `forge test` 14/14 PASS (12 unit+fuzz, 2 invariants @ 128 runs /
-2,560 calls). **Testnet deployment DONE 19 Nov 2026 ~13:01 WIB** (blocker
-faucet teratasi: deployer menerima 0,01 tBNB dari Vanilla).
+written, `forge test` **27/27 PASS** (12 unit+fuzz, 2 invariants @ 128 runs /
+2,560 calls, 8 audit tests, 5 ownership tests). **Testnet deployment DONE
+19 Nov 2026 ~13:01 WIB** (blocker faucet teratasi: deployer menerima 0,01 tBNB
+dari Vanilla).
 
 ## Testnet deployment (BSC testnet, chain 97)
 
@@ -11,12 +12,12 @@ faucet teratasi: deployer menerima 0,01 tBNB dari Vanilla).
   - Deploy tx: `0xe9caa8bc7f67735eb6ca9dda53b8992e294a29cb9c321ea8c42caf03f4d60460`
   - https://testnet.bscscan.com/address/0x6E1EE2FF55042a7B689b87eF3C1B490F6d23c3C7
   - https://testnet.bscscan.com/tx/0xe9caa8bc7f67735eb6ca9dda53b8992e294a29cb9c321ea8c42caf03f4d60460
-  - Gas: 1.067.799 @ 0,1 gwei — block 143.587.746
+  - Gas: 1.064.727 @ 0,1 gwei — block 143.587.234
 - **AgentRitualNFT:** `0xca998896041A761E315125cf42E8dBE8D3cE087C`
   - Deploy tx: `0x8785386d58d9ef007807e4923ec0209a2eede9f5d3a366cd9c0986189fe95c48`
   - https://testnet.bscscan.com/address/0xca998896041A761E315125cf42E8dBE8D3cE087C
   - https://testnet.bscscan.com/tx/0x8785386d58d9ef007807e4923ec0209a2eede9f5d3a366cd9c0986189fe95c48
-  - Gas: 2.065.816 @ 0,1 gwei — block 143.587.746
+  - Gas: 2.060.184 @ 0,1 gwei — block 143.587.234
   - Constructor: registry = mock di atas, authorizedSigner =
     `0x1EAE2306559725B54102D96a9333667a4292599b` (testnet-only),
     baseURI = `https://agentritual.test/metadata/`
@@ -30,7 +31,7 @@ faucet teratasi: deployer menerima 0,01 tBNB dari Vanilla).
     (gas 93.327, status 1)
   - Mint token #0 (campaign 1, voucher EIP-712, deadline +1 jam, nonce 1):
     `0xf421e95f8e92e163fccc0364629befc2276369c787577db9eb0c36d121bf05cf`
-    (gas 179.796, status 1, block 143.587.935)
+    (gas 179.540, status 1, block 143.587.423)
   - https://testnet.bscscan.com/tx/0xf421e95f8e92e163fccc0364629befc2276369c787577db9eb0c36d121bf05cf
   - Verifikasi on-chain: `ownerOf(0)` = deployer, `totalSupply` = 1,
     `balanceOf(deployer)` = 1, `tokenURI(0)` =
@@ -41,10 +42,17 @@ faucet teratasi: deployer menerima 0,01 tBNB dari Vanilla).
   kunci di `~/.config/agentritual/testnet-deployer.key`, mode 600,
   di luar repo — JANGAN commit).
 
-**Mainnet: BELUM.** Deploy mainnet hanya setelah Phase 5 lolos, dengan
-persetujuan eksplisit pemilik proyek + tap wallet. Kontrak ini memakai
-mock registry — mainnet memakai registry resmi
-`0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F` sebagai constructor param.
+**Mainnet: DEPLOYED 19 Nov 2026 ~16:05 WIB, lalu HOLD (free-first strategy).**
+`AgentRitualNFT 0x60153D5098EB900273164cb1f8623Fa91EC653B4` (chain 56),
+deploy tx `0x704dcd77ed4d58051d3ec3d42fcb1eae79ada96ca9386db4d16a1d986931e26a`,
+block 134.475.521, gas 2.104.343 @ 0,05 gwei, Sourcify exact_match, owner =
+vanilla.ai (`0xAA2790d9daA0b0BdAf748faB24aC34F315Dc0833`), authorizedSigner =
+`0x04C1cbAE1d7702CC789193ac016234F629A8bD8f`, registry resmi
+`0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`, baseURI placeholder
+`https://agentritual.xyz/metadata/`, `NFT_DEPLOY_BLOCK = 134475521`.
+**HOLD berarti: tidak ada transaksi mainnet baru** (tidak ada mint publik,
+tidak ada `setBaseURI`, tidak ada top-up) sampai ada pengguna nyata.
+Full deploy report: `files/phase-5-mainnet-deploy.md` (working copy).
 
 ## Contract: `AgentRitualNFT.sol`
 
@@ -82,10 +90,13 @@ in both cases and is covered by unit tests against the mock.
 
 ## Tests (Phase 2)
 
-`forge test` — 14 passed, 0 failed:
+`forge test` — **27 passed, 0 failed:**
 cap 1.000, satu-per-wallet, expiry, replay, tiga-alamat-match, signer
 salah, tanpa Agent ID, pause, rotasi signer, fuzz 256 run, invariant
-128 run / 2.560 calls (totalSupply ≤ 1.000, balanceOf ≤ 1 per wallet).
+128 run / 2.560 calls (totalSupply ≤ 1.000, balanceOf ≤ 1 per wallet),
+8 audit test (cross-chain/cross-contract voucher, signature malleability,
+digest binding), 5 ownership test (Ownable2Step: transfer 2-step, renounce,
+pending replacement).
 
 ## Deploy
 

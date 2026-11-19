@@ -20,7 +20,7 @@ Short summary. Full design: Phase 0 audit report §5 (in the working copy at
 | Component | Stack | Role |
 |---|---|---|
 | `apps/web` | Vite + React + TypeScript + Tailwind | 6 pages (Home, Campaign 001, NFT Collection, Live Mint Tracker, Open Source, Admin). Reads data from the API. No wallet connect, no QR. |
-| `apps/api` | Node + TypeScript + Fastify | `POST /api/submissions`, `GET /api/submissions/:id`, `GET /api/tracker`, `GET /metadata/:id`, admin stubs (501 in Phase 1). |
+| `apps/api` | Node + TypeScript + Fastify | `POST /api/submissions`, `GET /api/submissions/:id`, `GET /api/tracker`, `GET /metadata/:id`, admin auth + review (implemented in Phase 4). |
 | Database | SQLite (local file) / Turso (cloud) | `submissions`, `audit_log` (append-only), `vouchers`, `_migrations`. |
 | `contracts` | Foundry + OpenZeppelin (Phase 2) | `AgentRitualNFT` ERC-721 + EIP-712 voucher; mock Agent ID registry for testnet. |
 | `packages/skill` | Markdown | Agent skill + prompt (full version Phase 3). |

@@ -1,6 +1,15 @@
 # Deployment — AgentRitual
 
-## Status: NOT provisioned (Phase 1)
+## Status: NOT provisioned
+
+> **Update 19 Nov 2026:** the mainnet contract is DEPLOYED (see §5 checklist —
+> steps 1–7 done, contract `0x60153D5098EB900273164cb1f8623Fa91EC653B4`,
+> block 134.475.521, owner = vanilla.ai). **MAINNET HOLD (free-first strategy):**
+> no new mainnet transactions — no public mint, no `setBaseURI`, no top-up —
+> until real users exist. The checklist below remains the correct procedure
+> record for the deploy that already happened and for any future step.
+> Vercel/Turso provisioning (step 8, API env) is still pending and is a manual
+> step for the project owner.
 
 Nothing in this repo is deployed anywhere. Provisioning is a **manual step
 for the project owner** — no agent creates accounts on the owner's behalf.

@@ -6,7 +6,11 @@ out/
 # Environment & secrets — NEVER commit these
 .env
 .env.local
-*.local
+.env.*
+!.env.example
+*.key
+*.pem
+*.car
 
 # Local databases
 *.db
@@ -26,6 +30,7 @@ coverage/
 contracts/cache/
 contracts/out/
 contracts/lib/
+contracts/broadcast/
 
 # OS
 .DS_Store
