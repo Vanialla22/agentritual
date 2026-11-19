@@ -91,10 +91,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-ink text-zinc-100">
       <div className="border-b border-line bg-panel px-4 py-2 text-center text-xs text-muted sm:text-sm">
-        <span className="font-semibold text-gold">PHASE 1 — FOUNDATION</span>
+        <span className="font-semibold text-gold">DEMO — TESTNET</span>
         {" — "}
-        The NFT contract is not deployed yet and no on-chain data exists.
-        Nothing on this page is a live transaction.
+        The NFT contract is deployed on BSC testnet (chain 97); mainnet
+        (chain 56) is on HOLD — no public mint yet. Nothing on this page is
+        a live transaction unless you approve one yourself.
       </div>
 
       <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5">

@@ -29,11 +29,21 @@ contract and the backend API, not just written here.
   all-or-nothing by design (documented limitation). Rotate the secret
   after any suspected session-token leak, and whenever an admin leaves.
 - **Self-approval block:** when `ADMIN_WALLET` is set, the review API
-  refuses (403) an APPROVE on a submission from the admin's own
-  wallet. REJECT is allowed for your own submission (it grants nothing
-  and keeps the queue decidable). If `ADMIN_WALLET` is unset, the
-  server logs a startup warning that the block is inactive — set it
+  refuses (403) an APPROVE on a submission whose wallet equals
+  `ADMIN_WALLET`. REJECT is allowed for your own submission (it grants
+  nothing and keeps the queue decidable). If `ADMIN_WALLET` is unset,
+  the server logs a startup warning that the block is inactive — set it
   before any public use.
+  **What the block does NOT do:** the admin session carries no wallet
+  identity — the block only compares the *submitter's* wallet against
+  the configured string. The project has a single admin (Vanilla), who
+  submits from vanilla.ai. Setting `ADMIN_WALLET` to the deployer
+  address does not protect the real case (the deployer holds no Agent
+  ID and never submits); setting it to vanilla.ai blocks self-approval
+  but then nobody can approve the owner's own submission (there is no
+  second admin). The value is **pending the owner's decision** — do not
+  claim self-approval protection is effective in all cases until that
+  decision is made and the configuration matches it.
 - **Voucher lifetime:** approvals sign vouchers with a deadline of at
   most 1 hour (enforced in `signVoucher` itself, audit M-3). The
   audit-log entry for an approval records the voucher DIGEST, never
@@ -78,7 +88,10 @@ contract and the backend API, not just written here.
   submitter's wallet and has an expiry; it is single-use.
 - **Rotate the voucher signer key** (`setAuthorizedSigner` on the contract) if the
   signing key is ever compromised.
-- **Change the NFT metadata base URI.**
+- **Change the NFT metadata base URI** — the capability exists in the
+  contract, but current policy is HOLD: no `setBaseURI` until the IPFS
+  CIDs are publicly pinned and verified, and only with the owner's
+  explicit approval.
 - **Pause minting in an emergency** (pause stops minting; it does not change
   supply, ownership, or any minted token).
 
@@ -92,17 +105,27 @@ contract and the backend API, not just written here.
   voucher's recipient is part of the signed EIP-712 data.
 - **Change tracker numbers.** The tracker reads contract state and Mint events
   from the chain.
-- **Approve their own submission.** A submission from the reviewer's own
-  wallet is blocked from self-approval — in the admin UI and in the review
-  API (Phase 4).
+- **Approve their own submission — only when `ADMIN_WALLET` is set to the
+  reviewer's submission wallet** (see "Self-approval block" above). The
+  block compares the submission's wallet against the configured value;
+  it is not effective in all configurations, and the `ADMIN_WALLET`
+  value is still pending the owner's decision.
 - **See or store any user's private key.** The backend never receives one.
   The only key the backend holds is the project's own voucher-signer key
   (env var `ADMIN_SIGNER_PRIVATE_KEY`, never committed to the repo).
 
 ## Contract ownership
 
-Owner = the deployer wallet (project owner, via Binance Agentic Wallet).
-Owner functions: `setAuthorizedSigner`, `setBaseURI`, `pause`/`unpause`. There is no
+Owner = vanilla.ai (`0xAA2790d9daA0b0BdAf748faB24aC34F315Dc0833`). Ownership
+was transferred from the deployer in two steps (Ownable2Step): the
+deployer called `transferOwnership(vanilla.ai)`, and vanilla.ai accepted
+with `acceptOwnership()` from the Binance Agentic Wallet on 19 Nov 2026
+(tx `0x25e83fb87cd4c78777fd873aff0192f205f5aa3de472296f631e0f50ee1bf8b6`).
+The deployer was only the initial owner at deploy time.
+Owner functions: `setAuthorizedSigner`, `setBaseURI`, `pause`/`unpause`,
+`transferOwnership` / `renounceOwnership` (Ownable2Step — a transfer only
+sets a pending owner; the new owner must call `acceptOwnership()`; a
+renounce also clears a pending transfer). There is no
 timelock in the MVP — an accepted risk for the hackathon, mitigated by
 documenting every owner function here and on BscScan, and by keeping the
-owner key under the project owner's sole control.
+owner wallet under the project owner's sole control.

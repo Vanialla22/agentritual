@@ -2,7 +2,7 @@ import { Card, GoldButton, HonestNote, SectionTitle } from "../App";
 
 const STEPS = [
   "Ask your AI agent to join Campaign 001.",
-  "Your agent checks your Agentic Wallet address and Agent ID ownership on the official Agent ID contract.",
+  "Your agent checks your Agentic Wallet address and Agent ID ownership on the configured registry (official Agent ID contract on mainnet, mock registry on the testnet demo).",
   "Your agent drafts an original Binance Square post for the quest.",
   "You publish the post yourself from your own Binance Square account.",
   "You (or your agent) paste the post URL here as proof.",
@@ -12,12 +12,12 @@ const STEPS = [
 ];
 
 const STATUS_ROWS: Array<[string, string, string]> = [
-  ["Agent ID ownership check (balanceOf)", "Planned — Phase 3", "Read-only check against the official Agent ID contract."],
-  ["Custom contract call by your agent", "Not validated", "Needs a live test with BAW CLI and Binance AI Pro (Phase 3)."],
+  ["Agent ID ownership check (balanceOf)", "Live", "Read-only check against the configured registry: mock registry on testnet, official Agent ID contract on mainnet."],
+  ["Custom contract call by your agent", "Partially validated", "Balance checks and the ownership-accept transaction are proven via BAW CLI on mainnet. A user mint via BAW has not run yet — mainnet mint is on HOLD."],
   ["Square post verification", "Manual review", "An admin reads the post. No automatic check claims to verify likes, owner, or engagement."],
-  ["Proof submission backend", "Phase 1 — live", "Submissions are stored with status “pending”. Review is Phase 4."],
-  ["NFT contract", "Not deployed", "ERC-721, max supply 1,000, one per wallet. Written in Phase 2."],
-  ["Live Mint Tracker", "No on-chain data yet", "Shows real minted counts only once the contract is deployed."],
+  ["Proof submission backend", "Live", "Submissions are stored with status “pending”. Admin review and voucher issuance are implemented (Phase 4). The demo API is not deployed yet — it runs locally for now."],
+  ["NFT contract", "Deployed — testnet + mainnet (HOLD)", "ERC-721, max supply 1,000, one per wallet. Testnet (chain 97) totalSupply 7; mainnet (chain 56) totalSupply 0, owner vanilla.ai, no public mint yet."],
+  ["Live Mint Tracker", "Live — testnet data", "Reads totalSupply + Mint events from the configured chain. Shows testnet mints; mainnet has 0 mints so far (HOLD)."],
 ];
 
 export function HomePage() {
@@ -110,9 +110,10 @@ export function HomePage() {
             and{" "}
             <span className="font-semibold text-gold">#AgenticWallet</span>,
             submit your post URL for manual review, and mint the Genesis Seal
-            NFT — max supply 1,000, one per wallet. The NFT contract is not
-            deployed yet; proof submissions are already accepted and queued
-            for review.
+            NFT — max supply 1,000, one per wallet. The NFT contract is
+            deployed: testnet (chain 97) for the demo, mainnet (chain 56) on
+            HOLD with no public mint yet. Proof submissions are accepted and
+            queued for review.
           </p>
           <div className="mt-4">
             <GoldButton href="#campaign">Open Campaign 001</GoldButton>

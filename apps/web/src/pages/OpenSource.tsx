@@ -1,18 +1,22 @@
 import { Card, HonestNote, SectionTitle } from "../App";
 
 const REAL: string[] = [
-  "Proof submission API — POST /api/submissions stores a pending submission (Phase 1).",
-  "SQLite database with migrations for submissions, audit log, and vouchers (Phase 1).",
-  "Honest tracker states — the tracker shows “no on-chain data yet” until a contract exists.",
+  "Proof submission API — POST /api/submissions stores a pending submission.",
+  "SQLite database with migrations for submissions, audit log, and vouchers (001–005).",
+  "Live Mint Tracker reads totalSupply + Mint events from the chain — testnet totalSupply 7; mainnet totalSupply 0 (HOLD).",
+  "NFT contract deployed — ERC-721, cap 1,000, voucher EIP-712. Testnet (chain 97) + mainnet (chain 56), Sourcify exact_match both.",
+  "Agent ID on-chain verification — balanceOf on the official registry (mainnet) and the mock registry (testnet demo); eligibility endpoint + BAW balanceOf proven.",
+  "Admin authentication + review + append-only audit log — implemented (Phase 4) + hardening review.",
+  "End-to-end tests — voucher expiry, replay, duplicate mint, supply limit, failed transactions (Phase 4 e2e 25/25, Phase 5 e2e 7/7).",
+  "Mainnet deployment — deployed 19 Nov 2026, tx 0x704dcd77…, block 134.475.521, Sourcify exact_match, owner vanilla.ai.",
 ];
 
 const PLANNED: string[] = [
-  "NFT contract deployment (Phase 2) — ERC-721, cap 1,000, voucher EIP-712.",
-  "Agent ID on-chain verification (Phase 3) — balanceOf on the official registry.",
-  "Binance AI Pro end-to-end test (Phase 3) — not validated yet.",
-  "Admin authentication + review + append-only audit log (Phase 4).",
-  "End-to-end tests: voucher expiry, replay, duplicate mint, supply limit, failed transactions (Phase 5).",
-  "Mainnet deployment (Phase 5) — only after all tests pass, with tx hash + BscScan verification.",
+  "Binance AI Pro end-to-end test — not validated yet.",
+  "Public IPFS pinning — CIDs final, CARs backed up in the GitHub Release, not publicly pinned yet; baseURI still the placeholder.",
+  "Demo deployment — Vercel (web) + Render (API) + Turso (DB), all free tiers; not provisioned yet.",
+  "First mainnet mint from vanilla.ai — on HOLD, needs the owner's explicit go-ahead.",
+  "Second admin decision — ADMIN_WALLET choice pending (vanilla.ai vs deployer); single-admin limitation documented.",
 ];
 
 export function OpenSourcePage() {
@@ -35,30 +39,67 @@ export function OpenSourcePage() {
         <Card>
           <SectionTitle>Repository</SectionTitle>
           <p className="text-sm text-zinc-200">
-            <span className="font-semibold text-white">github.com/vanialla22/agentritual</span>
+            <a
+              href="https://github.com/Vanialla22/agentritual"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-gold underline"
+            >
+              github.com/Vanialla22/agentritual
+            </a>
           </p>
           <p className="mt-2 text-sm text-muted">
-            Public repository (to be created by the project owner — Phase 1
-            scaffolding lives locally until then). Monorepo: web app, API,
-            contracts, agent skill, docs.
+            Public since 19 Nov 2026 — pushed eb2aa44. Monorepo: web app,
+            API, contracts, agent skill, docs.
+          </p>
+          <p className="mt-2 text-sm text-muted">
+            IPFS CAR backup:{" "}
+            <a
+              href="https://github.com/Vanialla22/agentritual/releases/tag/ipfs-artifacts-v1"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-gold underline"
+            >
+              Release ipfs-artifacts-v1
+            </a>{" "}
+            (image.car + metadata.car + SHA256SUMS).
           </p>
         </Card>
         <Card>
           <SectionTitle>Contract on BscScan</SectionTitle>
           <p className="text-sm text-zinc-200">
-            <span className="font-semibold text-gold">Not deployed</span>
+            Mainnet (56):{" "}
+            <a
+              href="https://bscscan.com/address/0x60153D5098EB900273164cb1f8623Fa91EC653B4"
+              target="_blank"
+              rel="noreferrer"
+              className="break-all font-mono text-xs font-semibold text-gold underline"
+            >
+              0x60153D5098EB900273164cb1f8623Fa91EC653B4
+            </a>
+          </p>
+          <p className="mt-2 text-sm text-zinc-200">
+            Testnet (97):{" "}
+            <a
+              href="https://testnet.bscscan.com/address/0xca998896041A761E315125cf42E8dBE8D3cE087C"
+              target="_blank"
+              rel="noreferrer"
+              className="break-all font-mono text-xs font-semibold text-gold underline"
+            >
+              0xca998896041A761E315125cf42E8dBE8D3cE087C
+            </a>
           </p>
           <p className="mt-2 text-sm text-muted">
-            The contract address and BscScan verification link appear here
-            only after a real deployment — testnet in Phase 2, mainnet in
-            Phase 5.
+            Both contracts are deployed and Sourcify-verified. Mainnet is on
+            HOLD — totalSupply 0, no public mint yet; testnet totalSupply 7
+            from end-to-end testing.
           </p>
         </Card>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
         <Card>
-          <SectionTitle>What is real (Phase 1)</SectionTitle>
+          <SectionTitle>What is real</SectionTitle>
           <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-200">
             {REAL.map((item) => (
               <li key={item}>{item}</li>
@@ -66,7 +107,7 @@ export function OpenSourcePage() {
           </ul>
         </Card>
         <Card>
-          <SectionTitle>Still to build / test</SectionTitle>
+          <SectionTitle>Still pending</SectionTitle>
           <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-200">
             {PLANNED.map((item) => (
               <li key={item}>{item}</li>

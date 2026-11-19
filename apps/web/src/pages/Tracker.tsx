@@ -7,6 +7,17 @@ type State =
   | { kind: "ready"; data: TrackerData }
   | { kind: "unavailable"; reason: string };
 
+// Explorer base URL follows the tracker's own chain — every recent mint
+// comes from that chain, because the API serves one configured contract
+// (chain 97 = testnet, chain 56 = mainnet). Never assume mainnet.
+function explorerTxUrl(chainId: number, txHash: string): string {
+  const base =
+    chainId === 97
+      ? "https://testnet.bscscan.com/tx/"
+      : "https://bscscan.com/tx/";
+  return `${base}${txHash}`;
+}
+
 export function TrackerPage() {
   const [state, setState] = useState<State>({ kind: "loading" });
 
@@ -52,17 +63,18 @@ export function TrackerPage() {
 
       {state.kind === "unavailable" && (
         <Card>
-          <SectionTitle>No on-chain data yet</SectionTitle>
+          <SectionTitle>Tracker temporarily unavailable</SectionTitle>
           <p className="text-sm text-zinc-200">
-            The tracker cannot show minted numbers because the NFT contract
-            has not been deployed, or the API is unreachable.
+            The tracker cannot show minted numbers right now because the
+            API is unreachable.
           </p>
           <p className="mt-2 rounded-md border border-line bg-panel-2 px-3 py-2 text-sm text-muted">
             {state.reason}
           </p>
           <p className="mt-3 text-sm text-muted">
-            Once the contract is live, this page shows the real total minted,
-            remaining supply, and the latest mints with transaction links.
+            Once the API is reachable again, this page shows the real total
+            minted, remaining supply, and the latest mints with transaction
+            links.
           </p>
         </Card>
       )}
@@ -109,7 +121,7 @@ export function TrackerPage() {
                     <span className="break-all font-mono text-xs text-muted">{m.minter}</span>
                     <a
                       className="font-mono text-xs text-gold underline"
-                      href={`https://bscscan.com/tx/${m.txHash}`}
+                      href={explorerTxUrl(state.data.chainId, m.txHash)}
                       target="_blank"
                       rel="noreferrer"
                     >
