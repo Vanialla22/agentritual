@@ -180,6 +180,83 @@ export function verifyProofToken(
 
 export const CHALLENGE_TTL_SECONDS = 10 * 60; // 10 min
 
+// ---------------------------------------------------------------------------
+// EIP-712 challenge variant (BAW agents)
+// ---------------------------------------------------------------------------
+//
+// Binance Agentic Wallet CLI cannot personal_sign (EIP-191) — it only
+// signs EIP-712 typed data (and Solana). The text challenge above is
+// therefore unusable for BAW-driven agents. The same challenge is also
+// offered as EIP-712 typed data, bound to the SAME nonce + expiry +
+// wallet, so both signature types prove the same challenge and share
+// the same single-use + expiry + tag checks in the verify route.
+//
+// The nonce is 16 random bytes (32 hex chars), so it does not fit
+// bytes32 — it is carried as a string, which keeps the binding exact.
+// The domain reuses the voucher domain shape (audit M-2: chainId from
+// env, verifyingContract = the NFT contract), so a signature for one
+// chain/mode cannot be replayed on the other.
+
+export const CHALLENGE_TYPES: Record<
+  string,
+  Array<{ name: string; type: string }>
+> = {
+  OwnershipProof: [
+    { name: "wallet", type: "address" },
+    { name: "nonce", type: "string" },
+    { name: "expiresAt", type: "uint256" },
+  ],
+};
+
+/** EIP-712 domain for the ownership challenge. Null when the NFT contract is unconfigured (fail-closed). */
+export function getChallengeDomain(): {
+  name: string;
+  version: string;
+  chainId: number;
+  verifyingContract: string;
+} | null {
+  if (!config.nftContractAddress) return null;
+  return {
+    chainId: config.chainId,
+    name: "AgentRitual",
+    verifyingContract: config.nftContractAddress,
+    version: "1",
+  };
+}
+
+export interface ChallengeTypedData {
+  domain: NonNullable<ReturnType<typeof getChallengeDomain>>;
+  types: typeof CHALLENGE_TYPES;
+  primaryType: "OwnershipProof";
+  message: { wallet: string; nonce: string; expiresAt: number };
+}
+
+/**
+ * Build the EIP-712 typed data for a challenge (same nonce + expiry +
+ * wallet as the text message). Null when the domain is unconfigured.
+ * The verify route rebuilds this from the parsed message fields, so the
+ * client never supplies domain values — they always come from server
+ * config, which blocks cross-chain/cross-contract replay.
+ */
+export function buildChallengeTypedData(challenge: {
+  address: string;
+  nonce: string;
+  expiresAt: string;
+}): ChallengeTypedData | null {
+  const domain = getChallengeDomain();
+  if (!domain) return null;
+  return {
+    domain,
+    message: {
+      expiresAt: Math.floor(Date.parse(challenge.expiresAt) / 1000),
+      nonce: challenge.nonce,
+      wallet: challenge.address.toLowerCase(),
+    },
+    primaryType: "OwnershipProof",
+    types: CHALLENGE_TYPES,
+  };
+}
+
 export interface Challenge {
   address: string;
   nonce: string;
@@ -219,7 +296,11 @@ export function parseChallengeMessage(message: string): {
  * challenge (no DB table needed). The tag is returned with the challenge
  * and must be echoed back on verify.
  */
-export function challengeTag(challenge: Challenge): string {
+export function challengeTag(challenge: {
+  address: string;
+  nonce: string;
+  expiresAt: string;
+}): string {
   if (!config.authSecret) return "";
   return createHmac("sha256", config.authSecret)
     .update(`${challenge.address}|${challenge.nonce}|${challenge.expiresAt}`)

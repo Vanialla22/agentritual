@@ -38,7 +38,9 @@ ${modeLine}
 4. After I paste the post URL, prove I own the wallet first: request
    an ownership challenge from the API, sign the challenge message with
    my wallet, verify the signature, then submit the proof with the
-   proof token.
+   proof token. If your wallet is a Binance Agentic Wallet (BAW), it
+   cannot personal_sign — sign the challenge's typedData instead
+   (EIP-712, eth_signTypedData_v4) and verify with signType "eip712".
 5. If the proof is approved and a claim voucher is issued, show me
    the full mint transaction first — chain, contract address,
    recipient, NFT, and gas estimate — and wait for my explicit
@@ -396,6 +398,17 @@ export function CampaignPage() {
                 (personal_sign), then paste the signature below. Challenge
                 expires {challenge.expiresAt}.
               </p>
+              {challenge.typedData && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted">
+                    BAW agents: sign this typed data instead (EIP-712), then
+                    verify with signType "eip712".
+                  </p>
+                  <p className="break-all rounded-md border border-line bg-ink px-3 py-2 font-mono text-xs text-zinc-200">
+                    {JSON.stringify(challenge.typedData)}
+                  </p>
+                </div>
+              )}
               <form onSubmit={onVerifySignature} className="space-y-3">
                 <input
                   type="text"

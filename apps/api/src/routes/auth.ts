@@ -4,6 +4,7 @@ import { config } from "../config";
 import type { Db } from "../db";
 import {
   buildChallenge,
+  buildChallengeTypedData,
   challengeTag,
   consumeChallenge,
   createProofToken,
@@ -15,8 +16,8 @@ import { checkRateLimit, clientIp } from "../rateLimit";
 /**
  * Wallet-ownership proof (Phase 4, backlog item 1).
  *
- * GET  /api/auth/challenge?address=0x... → {address, message, expiresAt, tag}
- * POST /api/auth/verify {address, message, tag, signature} → {proofToken}
+ * GET  /api/auth/challenge?address=0x... → {address, message, expiresAt, tag, typedData?}
+ * POST /api/auth/verify {address, message, tag, signature, signType?} → {proofToken}
  *
  * The challenge is a plain-text EIP-191 statement with a random nonce and
  * a 10-minute expiry. It is stateless: the tag is an HMAC over the
@@ -24,9 +25,13 @@ import { checkRateLimit, clientIp } from "../rateLimit";
  * message with their own wallet (personal_sign) — signing a message is
  * not sharing a private key, and the message authorizes nothing.
  *
- * NOTE for BAW-driven agents: BAW CLI `sign-message` is EIP-712-only,
- * so it cannot personal-sign this challenge. Sign it with the agent's
- * own personal-sign capability (ethers/cast/AI Pro) instead.
+ * EIP-712 variant (BAW agents): BAW CLI `sign-message` is EIP-712-only,
+ * so it cannot personal_sign this challenge. The challenge response also
+ * carries `typedData` (same nonce + expiry + wallet, domain from server
+ * config). A BAW agent signs that typed data (eth_signTypedData_v4) and
+ * verifies with `signType: "eip712"`. Both signature types go through
+ * the identical expiry, tag, and single-use checks — only the recovery
+ * step differs.
  */
 export function registerAuthRoutes(app: FastifyInstance, db: Db) {
   app.get("/api/auth/challenge", async (req, reply) => {
@@ -64,6 +69,9 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db) {
       expiresAt: challenge.expiresAt,
       message: challenge.message,
       tag: challengeTag(challenge),
+      // EIP-712 variant for BAW agents (omitted when the NFT contract
+      // is unconfigured — the text challenge still works on its own).
+      typedData: buildChallengeTypedData(challenge) ?? undefined,
     };
   });
 
@@ -73,6 +81,7 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db) {
       message?: unknown;
       tag?: unknown;
       signature?: unknown;
+      signType?: unknown;
     };
     const address =
       typeof body.address === "string" ? body.address.trim() : "";
@@ -81,6 +90,16 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db) {
     const tag = typeof body.tag === "string" ? body.tag : "";
     const signature =
       typeof body.signature === "string" ? body.signature.trim() : "";
+    // "eip191" (default, personal_sign) or "eip712" (BAW agents).
+    // Anything else is rejected — the server never guesses how a
+    // signature was made.
+    const signType =
+      typeof body.signType === "string" ? body.signType.trim() : "eip191";
+    if (signType !== "eip191" && signType !== "eip712") {
+      return reply.status(400).send({
+        error: 'signType must be "eip191" or "eip712"',
+      });
+    }
     if (!ethers.isAddress(address) || !message || !tag || !signature) {
       return reply.status(400).send({
         error: "address, message, tag and signature are required",
@@ -109,7 +128,27 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db) {
     }
     let recovered: string;
     try {
-      recovered = ethers.verifyMessage(message, signature);
+      if (signType === "eip712") {
+        // The typed data is rebuilt from the parsed challenge fields
+        // with the domain from server config — the client never supplies
+        // domain values, so a signature for another chain or contract
+        // cannot verify here.
+        const typedData = buildChallengeTypedData(parsed);
+        if (!typedData) {
+          return reply.status(503).send({
+            error:
+              "EIP-712 challenge not configured: NFT_CONTRACT_ADDRESS is not set",
+          });
+        }
+        recovered = ethers.verifyTypedData(
+          typedData.domain,
+          typedData.types,
+          typedData.message,
+          signature,
+        );
+      } else {
+        recovered = ethers.verifyMessage(message, signature);
+      }
     } catch {
       return reply
         .status(400)

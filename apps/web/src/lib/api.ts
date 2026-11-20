@@ -151,11 +151,26 @@ export function submitProof(input: {
   });
 }
 
+export interface ChallengeTypedData {
+  domain: {
+    name: string;
+    version: string;
+    chainId: number;
+    verifyingContract: string;
+  };
+  types: Record<string, Array<{ name: string; type: string }>>;
+  primaryType: string;
+  message: { wallet: string; nonce: string; expiresAt: number };
+}
+
 export interface Challenge {
   address: string;
   message: string;
   expiresAt: string;
   tag: string;
+  // EIP-712 variant of the same challenge (BAW agents). Absent when the
+  // API has no NFT contract configured — the text challenge still works.
+  typedData?: ChallengeTypedData;
 }
 
 export function fetchChallenge(address: string): Promise<Challenge> {
@@ -169,6 +184,9 @@ export function verifyChallenge(input: {
   message: string;
   tag: string;
   signature: string;
+  // "eip191" (default, personal_sign) or "eip712" (BAW agents signing
+  // the challenge's typedData). Omit for the text challenge.
+  signType?: "eip191" | "eip712";
 }): Promise<{ address: string; proofToken: string }> {
   return api<{ address: string; proofToken: string }>("/api/auth/verify", {
     body: JSON.stringify(input),
