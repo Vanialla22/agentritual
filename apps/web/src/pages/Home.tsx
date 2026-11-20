@@ -11,12 +11,20 @@ const STEPS = [
   "Your agent shows you the mint transaction — chain, contract, recipient, NFT, gas estimate — and you approve it explicitly. The mint is yours.",
 ];
 
+const TESTNET_STEPS = [
+  "No PC, no wallet connect, no command line — your AI agent does the on-chain work. You post on Binance Square from your phone and talk to your agent.",
+  "Your agent holds a Mock Agent ID on BSC testnet (chain 97). Mock IDs are minted by the deployer only for now — ask the admin for one.",
+  "Your agent takes the ownership challenge, signs it, and submits your Square post URL with the proof.",
+  "An admin reviews the post and approves it. Your agent receives a claim voucher, valid for 1 hour.",
+  "Your agent mints the Genesis Seal NFT on testnet. Free except a little testnet gas — tBNB is free from the faucet on the Campaign page.",
+];
+
 const STATUS_ROWS: Array<[string, string, string]> = [
   ["Agent ID ownership check (balanceOf)", "Live", "Read-only check against the configured registry: mock registry on testnet, official Agent ID contract on mainnet."],
-  ["Custom contract call by your agent", "Partially validated", "Balance checks and the ownership-accept transaction are proven via BAW CLI on mainnet. A user mint via BAW has not run yet — minting via agent is untested and not open yet."],
+  ["Custom contract call by your agent", "Proven on testnet", "Minting via agent is proven on testnet (live end-to-end demo, 20 Nov 2026, token #7 minted via voucher). On mainnet it is untested and not open yet — no user mint via BAW has run yet."],
   ["Square post verification", "Manual review", "An admin reads the post. No automatic check claims to verify likes, owner, or engagement."],
   ["Proof submission backend", "Live", "Submissions are stored with status “pending”. Admin review and voucher issuance are implemented (Phase 4). Both APIs are live on Railway — testnet and mainnet."],
-  ["NFT contract", "Deployed — testnet + mainnet", "ERC-721, max supply 1,000, one per wallet. Owner vanilla.ai. Metadata live on IPFS (baseURI set 20 Nov 2026); minting via agent untested and not open yet."],
+  ["NFT contract", "Deployed — testnet + mainnet", "ERC-721, max supply 1,000, one per wallet. Owner vanilla.ai. Metadata live on IPFS (baseURI set 20 Nov 2026); minting via agent proven on testnet (20 Nov 2026), on mainnet untested and not open yet."],
   ["Live Mint Tracker", "Live — follows the active mode", "Reads totalSupply + Mint events from the active mode's chain (testnet 97 in Testnet mode, mainnet 56 in Mainnet mode). Switch modes in the header to see the other chain."],
 ];
 
@@ -60,6 +68,31 @@ export function HomePage() {
             </li>
           ))}
         </ol>
+      </section>
+
+      <section>
+        <SectionTitle>Try the demo on testnet — free</SectionTitle>
+        <Card>
+          <p className="text-sm text-zinc-200">
+            The full quest flow already works end-to-end on BSC testnet —
+            proven live on 20 Nov 2026, when a test wallet minted token #7
+            through the live API and website. Testnet uses play money only:
+            no real funds, no real Agent ID needed.
+          </p>
+          <ol className="mt-4 grid gap-3 sm:grid-cols-2">
+            {TESTNET_STEPS.map((step, i) => (
+              <li key={i} className="flex gap-3 rounded-xl border border-line bg-panel-2 p-4">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold text-sm font-black text-black">
+                  {i + 1}
+                </span>
+                <span className="text-sm text-zinc-200">{step}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-4">
+            <GoldButton href="#campaign">Open Campaign 001</GoldButton>
+          </div>
+        </Card>
       </section>
 
       <section>
@@ -112,9 +145,10 @@ export function HomePage() {
             submit your post URL for manual review, and mint the Genesis Seal
             NFT — max supply 1,000, one per wallet. The NFT contract is
             deployed on both chains: testnet (chain 97) for the demo, mainnet
-            (chain 56) with metadata live on IPFS. Minting via agent has
-            never been tested end-to-end and is not open yet. Proof
-            submissions are accepted and queued for review.
+            (chain 56) with metadata live on IPFS. Minting via agent is
+            proven end-to-end on testnet (live demo, 20 Nov 2026). On
+            mainnet it is untested and not open yet. Proof submissions are
+            accepted and queued for review.
           </p>
           <div className="mt-4">
             <GoldButton href="#campaign">Open Campaign 001</GoldButton>
