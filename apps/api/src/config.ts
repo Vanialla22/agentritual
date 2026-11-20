@@ -47,6 +47,15 @@ export const config = {
   // Agent ID on-chain, no duplicate active submission, authorized
   // campaign. Post CONTENT is not checked by anyone when this is on.
   autoApprove: process.env.AUTO_APPROVE !== "false",
+  // Maximum voucher lifetime (21 Nov 2026): how long a claim voucher
+  // stays valid after issuance. Default 24 hours — 1 hour was too
+  // tight for the BAW preview + phone-tap flow. Set
+  // MAX_VOUCHER_TTL_SECONDS to tune without a code change. The voucher
+  // is bound to its recipient (only the recipient can mint), so a
+  // longer window does not let anyone else use it.
+  maxVoucherTtlSeconds: Number(
+    process.env.MAX_VOUCHER_TTL_SECONDS ?? 24 * 60 * 60,
+  ),
   // Historical test-mint tx hashes (Phase 2/3/4 e2e test mints: tokens
   // #0, #1, #2). GET /api/admin/mint-audit classifies these as
   // "known-test" instead of anomalies — they predate the voucher flow

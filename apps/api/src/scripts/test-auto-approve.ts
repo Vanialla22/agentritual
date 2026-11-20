@@ -159,8 +159,8 @@ async function main() {
         const deadline = v.deadline as number;
         const now = Math.floor(Date.now() / 1000);
         check(
-          "voucher deadline within 1 hour",
-          deadline > now && deadline <= now + 3600,
+          "voucher deadline within 24 hours",
+          deadline > now && deadline <= now + 24 * 3600,
           `deadline=${deadline} now=${now}`,
         );
         check(

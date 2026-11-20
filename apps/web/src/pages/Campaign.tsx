@@ -239,7 +239,7 @@ export function CampaignPage() {
       setVoucher(checked.voucher ?? null);
       setMessage(
         checked.status === "approved"
-          ? `Proof received and approved automatically — submission ${checked.id}. Your claim voucher is below, valid for 1 hour from approval. Mint before it expires.`
+          ? `Proof received and approved automatically — submission ${checked.id}. Your claim voucher is below, valid for 24 hours from approval. Mint before it expires.`
           : `Proof received — submission ${checked.id} is ${checked.status}. An admin will manually review your Square post. Agent ID ownership is verified on-chain before any approval.`,
       );
       setWallet("");
@@ -602,7 +602,7 @@ export function CampaignPage() {
                 </p>
               ) : (
                 <p className="text-zinc-200">
-                  Valid for 1 hour from approval — expires{" "}
+                  Valid for 24 hours from approval — expires{" "}
                   {new Date(voucher.deadline * 1000).toISOString()} (in about{" "}
                   {voucherMinutesLeft} minutes). Use it before then: after
                   expiry the contract rejects the mint.

@@ -165,6 +165,7 @@ service) and in the owner's password manager.
 | `ADMIN_WALLET` | Yes (self-approval block) | `""` (block inactive + startup warning) | `vanilla.ai` | `vanilla.ai` |
 | `AUTHORIZED_CAMPAIGNS` | No | `001` | `001` | `001` |
 | `AUTO_APPROVE` | No | `true` (auto-approve on; set `false` to restore manual review) | default (on) | default (on) |
+| `MAX_VOUCHER_TTL_SECONDS` | No | `86400` (24 h voucher lifetime) | default (24 h) | default (24 h) |
 | `KNOWN_TEST_MINT_TX_HASHES` | No | 3 testnet tx hashes (tokens #0–#2) | default (covers testnet test mints) | EMPTY (any mainnet mint without a voucher must show as an anomaly) |
 | `CORS_ORIGIN` | Yes in production | `http://localhost:5173,http://localhost:3000` | `https://agentritual.vercel.app` | `https://agentritual.vercel.app` |
 | `RATE_LIMIT_*` (5 vars) | No | documented Phase 4 limits (5/hr/wallet submissions, 20/hr/IP, 5/15min/IP logins, 60/min/IP eligibility, 10/min/IP challenges) | defaults | defaults |
@@ -404,7 +405,7 @@ deploy cost (BNB) = deploy gasUsed × current mainnet gas price (gwei) ÷ 1e9
   via BAW: ownership accept, signer rotation, `setBaseURI`). Do not claim
   the agent mint path works until a BAW mint succeeds on testnet.
 - **Voucher re-issue policy (blocker before mainnet promo).** A voucher
-  lives 1 hour; if it expires, the submission cannot be re-reviewed
+  lives 24 hours by default (env MAX_VOUCHER_TTL_SECONDS); if it expires, the submission cannot be re-reviewed
   (409) and cannot be re-submitted (409), and there is no re-issue
   endpoint. Decide the policy (and build the endpoint, if any) before
   promoting mainnet — otherwise an expired voucher locks a user out of

@@ -60,7 +60,7 @@ enforced by the smart contract, not by the website.
    succeeded until the transaction receipt is verified on-chain and
    the explorer link is shown.
 7. **Voucher deadlines are short.** A claim voucher is valid for at
-   most 1 hour after issuance. If the voucher is expired, ask the
+   most 24 hours after issuance. If the voucher is expired, ask the
    admin for a fresh one — never mint with an expired voucher.
 8. **One mint per wallet per campaign.** If the wallet already
    minted for this campaign, stop — the contract will revert

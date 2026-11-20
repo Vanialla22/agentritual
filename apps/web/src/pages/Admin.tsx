@@ -167,11 +167,12 @@ export function AdminPage() {
           Review dashboard
         </h1>
         <p className="mt-3 max-w-3xl text-muted">
-          Submissions are approved automatically once the checks pass
-          (AUTO_APPROVE). This panel lists them — and any pending ones,
-          for example when automatic approval was off — and you can
-          still approve or reject pending submissions. Approval issues a
-          signed claim voucher bound to the submitter&apos;s wallet.
+          Admin only. Submissions are approved automatically once the
+          checks pass (AUTO_APPROVE). This panel lists them — and any
+          pending ones, for example when automatic approval was off —
+          and you can still approve or reject pending submissions.
+          Approval issues a signed claim voucher bound to the
+          submitter&apos;s wallet.
         </p>
         {/* Mode badge — values come from MODES[getMode()], the same map the
             API calls use, so this badge can never disagree with the
@@ -207,6 +208,10 @@ export function AdminPage() {
       {!token && (
         <Card>
           <SectionTitle>Admin sign-in</SectionTitle>
+          <p className="mb-4 text-sm text-muted">
+            Admin only — if that&apos;s not you, there&apos;s nothing
+            here for you.
+          </p>
           <form onSubmit={onLogin} className="space-y-4">
             <div>
               <label
@@ -346,7 +351,7 @@ export function AdminPage() {
                 </p>
                 <p className="mt-1 text-sm text-muted">
                   Recipient {lastVoucher.recipient} · deadline{" "}
-                  {new Date(lastVoucher.deadline * 1000).toISOString()} (1 h
+                  {new Date(lastVoucher.deadline * 1000).toISOString()} (24 h
                   max) · nonce {lastVoucher.nonce.slice(0, 18)}…
                 </p>
               </Card>
@@ -497,7 +502,7 @@ export function AdminPage() {
           <SectionTitle>Admin CAN</SectionTitle>
           <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-200">
             <li>Approve or reject a submission after reading the Square post.</li>
-            <li>Sign claim vouchers (automatic on approval, bound to the submitter&apos;s wallet, 1 h max).</li>
+            <li>Sign claim vouchers (automatic on approval, bound to the submitter&apos;s wallet, 24 h max).</li>
             <li>Read the hash-chained audit log, verify its chain, and run the mint audit.</li>
           </ul>
         </Card>

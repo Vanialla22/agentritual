@@ -15,7 +15,7 @@ const TESTNET_STEPS = [
   "No PC, no wallet connect, no command line — your AI agent does the on-chain work. You post on Binance Square from your phone and talk to your agent.",
   "Your agent holds a Mock Agent ID on BSC testnet (chain 97). Mock IDs are minted by the deployer only for now — ask the admin for one.",
   "Your agent takes the ownership challenge, signs it, and submits your Square post URL with the proof.",
-  "Your proof is approved automatically once the checks pass. Your agent receives a claim voucher, valid for 1 hour.",
+  "Your proof is approved automatically once the checks pass. Your agent receives a claim voucher, valid for 24 hours.",
   "Your agent mints the Genesis Seal NFT on testnet. Free except a little testnet gas — tBNB is free from the faucet on the Campaign page.",
 ];
 
