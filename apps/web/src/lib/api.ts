@@ -1,6 +1,80 @@
-const raw = import.meta.env.VITE_API_URL as string | undefined;
+export type Mode = "testnet" | "mainnet";
 
-export const API_URL = (raw ?? "http://localhost:3001").replace(/\/$/, "");
+export interface ModeInfo {
+  apiUrl: string | undefined;
+  chainId: number;
+  chainName: string;
+  contractAddress: string;
+  registryAddress: string;
+  explorerBase: string;
+}
+
+const MODE_STORAGE_KEY = "agentritual-mode";
+
+// Single source of truth for per-mode config. apiUrl comes from env;
+// the addresses are public on-chain values (already hardcoded elsewhere
+// before this change — consolidated here, nothing new).
+export const MODES: Record<Mode, ModeInfo> = {
+  testnet: {
+    apiUrl: import.meta.env.VITE_API_URL_TESTNET as string | undefined,
+    chainId: 97,
+    chainName: "BNB Smart Chain Testnet",
+    contractAddress: "0xca998896041A761E315125cf42E8dBE8D3cE087C",
+    registryAddress: "0x6E1EE2FF55042a7B689b87eF3C1B490F6d23c3C7",
+    explorerBase: "https://testnet.bscscan.com",
+  },
+  mainnet: {
+    apiUrl: import.meta.env.VITE_API_URL_MAINNET as string | undefined,
+    chainId: 56,
+    chainName: "BNB Smart Chain",
+    contractAddress: "0x60153D5098EB900273164cb1f8623Fa91EC653B4",
+    registryAddress: "0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F",
+    explorerBase: "https://bscscan.com",
+  },
+};
+
+/** Read the stored mode. Invalid / missing values fail closed to testnet. */
+export function readMode(): Mode {
+  try {
+    const stored = localStorage.getItem(MODE_STORAGE_KEY);
+    if (stored === "testnet" || stored === "mainnet") return stored;
+    if (stored !== null) localStorage.removeItem(MODE_STORAGE_KEY);
+  } catch {
+    // storage unavailable (e.g. private mode) — fall through to default
+  }
+  return "testnet";
+}
+
+let currentMode: Mode = readMode();
+
+export function getMode(): Mode {
+  return currentMode;
+}
+
+export function setMode(mode: Mode): void {
+  currentMode = mode;
+  try {
+    localStorage.setItem(MODE_STORAGE_KEY, mode);
+  } catch {
+    // non-fatal: the mode still applies for this session
+  }
+}
+
+/**
+ * Base URL for the active mode, resolved at call time (not module load)
+ * so switching modes takes effect immediately. Throws instead of silently
+ * falling back to the other network's API — a missing env disables that
+ * mode, it never mixes data between networks.
+ */
+export function getApiUrl(mode: Mode = currentMode): string {
+  const url = MODES[mode].apiUrl?.replace(/\/$/, "");
+  if (!url) {
+    throw new Error(
+      `API ${mode === "testnet" ? "Testnet" : "Mainnet"} belum dikonfigurasi (env VITE_API_URL_${mode.toUpperCase()} kosong)`,
+    );
+  }
+  return url;
+}
 
 export interface TrackerData {
   contractAddress: string;
@@ -25,12 +99,14 @@ export interface Submission {
   campaign_id: string;
   status: string;
   created_at: string;
+  // Present only when status === "approved" (GET /api/submissions/:id).
+  voucher?: Voucher;
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+  const res = await fetch(`${getApiUrl()}${path}`, {
     ...init,
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
   const body = (await res.json().catch(() => null)) as unknown;
   if (!res.ok) {
@@ -113,7 +189,9 @@ export interface Voucher {
   deadline: number;
   nonce: string;
   signature: string;
-  digest: string;
+  // Only returned by POST /api/admin/review; GET /api/submissions/:id
+  // omits it, so it must stay optional.
+  digest?: string;
 }
 
 export async function adminLogin(password: string): Promise<string> {

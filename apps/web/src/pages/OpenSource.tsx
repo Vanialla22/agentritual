@@ -3,20 +3,20 @@ import { Card, HonestNote, SectionTitle } from "../App";
 const REAL: string[] = [
   "Proof submission API — POST /api/submissions stores a pending submission.",
   "SQLite database with migrations for submissions, audit log, and vouchers (001–005).",
-  "Live Mint Tracker reads totalSupply + Mint events from the chain — testnet totalSupply 7; mainnet totalSupply 0 (HOLD).",
+  "Live Mint Tracker reads totalSupply + Mint events from the active mode's chain (testnet 97 / mainnet 56) — switch modes in the header.",
   "NFT contract deployed — ERC-721, cap 1,000, voucher EIP-712. Testnet (chain 97) + mainnet (chain 56), Sourcify exact_match both.",
   "Agent ID on-chain verification — balanceOf on the official registry (mainnet) and the mock registry (testnet demo); eligibility endpoint + BAW balanceOf proven.",
   "Admin authentication + review + append-only audit log — implemented (Phase 4) + hardening review.",
   "End-to-end tests — voucher expiry, replay, duplicate mint, supply limit, failed transactions (Phase 4 e2e 25/25, Phase 5 e2e 7/7).",
   "Mainnet deployment — deployed 19 Nov 2026, tx 0x704dcd77…, block 134.475.521, Sourcify exact_match, owner vanilla.ai.",
+  "NFT metadata live on IPFS — image + 1,000 metadata files pinned on Filebase (verified via gateway); mainnet baseURI set 20 Nov 2026, tx 0xa31e44cc….",
+  "Live deployment — web on Vercel, APIs on Railway (testnet + mainnet), Turso databases; free tiers.",
+  "Single admin wallet (vanilla.ai) — self-approval is blocked; limitation documented in docs/admin-rights.md.",
 ];
 
 const PLANNED: string[] = [
   "Binance AI Pro end-to-end test — not validated yet.",
-  "Public IPFS pinning — CIDs final, CARs backed up in the GitHub Release, not publicly pinned yet; baseURI still the placeholder.",
-  "Demo deployment — Vercel (web) + Render (API) + Turso (DB), all free tiers; not provisioned yet.",
-  "First mainnet mint from vanilla.ai — on HOLD, needs the owner's explicit go-ahead.",
-  "Second admin decision — ADMIN_WALLET choice pending (vanilla.ai vs deployer); single-admin limitation documented.",
+  "First mainnet mint — not open yet; minting via agent untested. Needs an approved submission from an Agent ID holder (the owner cannot self-approve).",
 ];
 
 export function OpenSourcePage() {
@@ -90,9 +90,10 @@ export function OpenSourcePage() {
             </a>
           </p>
           <p className="mt-2 text-sm text-muted">
-            Both contracts are deployed and Sourcify-verified. Mainnet is on
-            HOLD — totalSupply 0, no public mint yet; testnet totalSupply 7
-            from end-to-end testing.
+            Both contracts are deployed and Sourcify-verified. Mainnet mint
+            is not open yet — minting via agent has never been tested
+            end-to-end. Testnet is the demo chain — see Live Mint Tracker
+            for current minted counts.
           </p>
         </Card>
       </section>

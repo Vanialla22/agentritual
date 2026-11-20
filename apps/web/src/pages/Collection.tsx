@@ -36,9 +36,9 @@ export function CollectionPage() {
           </svg>
           <p className="mt-3 text-center text-xs text-muted">
             Final Genesis Seal artwork — in the repo
-            (contracts/metadata/genesis-seal.webp) and in the IPFS CAR
-            backup (GitHub Release ipfs-artifacts-v1). Not publicly pinned
-            yet, and the contract baseURI is still the placeholder.
+            (contracts/metadata/genesis-seal.webp) and pinned on IPFS
+            (Filebase). The mainnet contract baseURI points at the live
+            metadata since 20 Nov 2026.
           </p>
         </Card>
 
@@ -65,7 +65,7 @@ export function CollectionPage() {
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Mainnet minted</dt>
-                <dd className="font-semibold text-white">0 — HOLD, no public mint yet</dd>
+                <dd className="font-semibold text-white">Not open yet — see Live Mint Tracker</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Testnet (97)</dt>
@@ -82,7 +82,7 @@ export function CollectionPage() {
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Testnet minted</dt>
-                <dd className="font-semibold text-white">7</dd>
+                <dd className="font-semibold text-white">Demo mints — see Live Mint Tracker</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Max supply</dt>
@@ -108,11 +108,12 @@ export function CollectionPage() {
 
       <HonestNote>
         Both contracts are deployed and Sourcify-verified: mainnet (chain
-        56) totalSupply 0 — on HOLD, no public mint yet; testnet (chain 97)
-        totalSupply 7 from end-to-end testing. A contract address is listed
+        56) and testnet (chain 97). A contract address is listed
         here only after deployment with a transaction hash and BscScan
         verification — both deployments meet that bar. The NFT metadata is
-        not final yet: the baseURI is still the placeholder.
+        live on IPFS (baseURI set 20 Nov 2026); minting via agent has never
+        been tested end-to-end and is not open yet. See Live Mint Tracker
+        for current minted counts.
       </HonestNote>
     </div>
   );

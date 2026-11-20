@@ -8,6 +8,8 @@ import {
   fetchAuditCheckpoint,
   fetchAuditLog,
   fetchMintAudit,
+  getMode,
+  MODES,
   verifyAuditLog,
   type AdminSubmission,
   type AuditLogEntry,
@@ -16,6 +18,9 @@ import {
 } from "../lib/api";
 
 export function AdminPage() {
+  // Mode is stable for this component's lifetime: App remounts the page
+  // (key={mode}) whenever the mode changes.
+  const mode = getMode();
   const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
@@ -166,6 +171,35 @@ export function AdminPage() {
           reject them. Approval issues a signed claim voucher bound to the
           submitter&apos;s wallet.
         </p>
+        {/* Mode badge — values come from MODES[getMode()], the same map the
+            API calls use, so this badge can never disagree with the
+            deployment this panel actually talks to. Shown before sign-in
+            so nobody logs into the wrong deployment by mistake. */}
+        <div className="mt-4 rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-sm">
+          <p>
+            <span className="font-semibold text-gold">
+              {mode === "testnet" ? "TESTNET" : "MAINNET"}
+            </span>{" "}
+            — {MODES[mode].chainName} (chain {MODES[mode].chainId})
+          </p>
+          <p className="mt-1 break-all text-xs text-muted">
+            API:{" "}
+            <span className="font-mono">
+              {MODES[mode].apiUrl ?? "not configured"}
+            </span>
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Contract:{" "}
+            <a
+              className="break-all font-mono text-gold underline"
+              href={`${MODES[mode].explorerBase}/address/${MODES[mode].contractAddress}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {MODES[mode].contractAddress}
+            </a>
+          </p>
+        </div>
       </section>
 
       {!token && (
@@ -462,9 +496,7 @@ export function AdminPage() {
           <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-200">
             <li>Approve or reject a submission after reading the Square post.</li>
             <li>Sign claim vouchers (automatic on approval, bound to the submitter&apos;s wallet, 1 h max).</li>
-            <li>Rotate the voucher signer key if it is ever compromised.</li>
-            <li>Change the NFT metadata base URI.</li>
-            <li>Pause minting in an emergency (pause stops minting; it does not change supply).</li>
+            <li>Read the hash-chained audit log, verify its chain, and run the mint audit.</li>
           </ul>
         </Card>
         <Card>
@@ -477,6 +509,21 @@ export function AdminPage() {
             <li>Approve their own submission — a submission from the admin&apos;s own wallet is blocked server-side.</li>
             <li>See or store any user&apos;s private key — the backend never receives one.</li>
           </ul>
+        </Card>
+      </section>
+
+      <section>
+        <Card>
+          <SectionTitle>Only the contract owner can do this — not through this panel</SectionTitle>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-200">
+            <li>Rotate the voucher signer key — needs an owner wallet transaction (setAuthorizedSigner) plus an API env update.</li>
+            <li>Change the NFT metadata base URI — needs an owner wallet transaction (setBaseURI).</li>
+            <li>Pause or unpause minting in an emergency — needs an owner wallet transaction (pause / unpause). Pausing stops minting; it does not change supply.</li>
+          </ul>
+          <p className="mt-2 text-xs text-muted">
+            These are onlyOwner functions on the NFT contract, and this panel
+            has no endpoint for them. The contract owner is vanilla.ai.
+          </p>
         </Card>
       </section>
 

@@ -13,11 +13,11 @@ const STEPS = [
 
 const STATUS_ROWS: Array<[string, string, string]> = [
   ["Agent ID ownership check (balanceOf)", "Live", "Read-only check against the configured registry: mock registry on testnet, official Agent ID contract on mainnet."],
-  ["Custom contract call by your agent", "Partially validated", "Balance checks and the ownership-accept transaction are proven via BAW CLI on mainnet. A user mint via BAW has not run yet — mainnet mint is on HOLD."],
+  ["Custom contract call by your agent", "Partially validated", "Balance checks and the ownership-accept transaction are proven via BAW CLI on mainnet. A user mint via BAW has not run yet — minting via agent is untested and not open yet."],
   ["Square post verification", "Manual review", "An admin reads the post. No automatic check claims to verify likes, owner, or engagement."],
-  ["Proof submission backend", "Live", "Submissions are stored with status “pending”. Admin review and voucher issuance are implemented (Phase 4). The demo API is not deployed yet — it runs locally for now."],
-  ["NFT contract", "Deployed — testnet + mainnet (HOLD)", "ERC-721, max supply 1,000, one per wallet. Testnet (chain 97) totalSupply 7; mainnet (chain 56) totalSupply 0, owner vanilla.ai, no public mint yet."],
-  ["Live Mint Tracker", "Live — testnet data", "Reads totalSupply + Mint events from the configured chain. Shows testnet mints; mainnet has 0 mints so far (HOLD)."],
+  ["Proof submission backend", "Live", "Submissions are stored with status “pending”. Admin review and voucher issuance are implemented (Phase 4). Both APIs are live on Railway — testnet and mainnet."],
+  ["NFT contract", "Deployed — testnet + mainnet", "ERC-721, max supply 1,000, one per wallet. Owner vanilla.ai. Metadata live on IPFS (baseURI set 20 Nov 2026); minting via agent untested and not open yet."],
+  ["Live Mint Tracker", "Live — follows the active mode", "Reads totalSupply + Mint events from the active mode's chain (testnet 97 in Testnet mode, mainnet 56 in Mainnet mode). Switch modes in the header to see the other chain."],
 ];
 
 export function HomePage() {
@@ -111,9 +111,10 @@ export function HomePage() {
             <span className="font-semibold text-gold">#AgenticWallet</span>,
             submit your post URL for manual review, and mint the Genesis Seal
             NFT — max supply 1,000, one per wallet. The NFT contract is
-            deployed: testnet (chain 97) for the demo, mainnet (chain 56) on
-            HOLD with no public mint yet. Proof submissions are accepted and
-            queued for review.
+            deployed on both chains: testnet (chain 97) for the demo, mainnet
+            (chain 56) with metadata live on IPFS. Minting via agent has
+            never been tested end-to-end and is not open yet. Proof
+            submissions are accepted and queued for review.
           </p>
           <div className="mt-4">
             <GoldButton href="#campaign">Open Campaign 001</GoldButton>

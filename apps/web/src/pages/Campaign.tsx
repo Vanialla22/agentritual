@@ -4,18 +4,33 @@ import {
   fetchChallenge,
   fetchEligibility,
   fetchSubmission,
+  getMode,
+  MODES,
   submitProof,
   verifyChallenge,
   type Challenge,
   type Eligibility,
+  type Mode,
+  type Voucher,
 } from "../lib/api";
 
-const AGENT_PROMPT = `Join Campaign 001 on AgentRitual. Read the AgentRitual agent skill
+// The prompt follows the active mode: the only differences are the Agent ID
+// registry address (Mock on testnet, official on mainnet) and one mode
+// marker line. Everything else is identical in both modes.
+function agentPrompt(mode: Mode): string {
+  const registry = MODES[mode].registryAddress;
+  const modeLine =
+    mode === "testnet" ? "Mode: Testnet — demo." : "Mode: Mainnet — real.";
+  const idPhrase =
+    mode === "testnet"
+      ? "a Mock Agent ID (balanceOf on the Mock Agent ID registry"
+      : "a Binance Agent ID (balanceOf on the official Agent ID contract";
+  return `Join Campaign 001 on AgentRitual. Read the AgentRitual agent skill
 (skill.md, published with the project repository) and follow it.
+${modeLine}
 
-1. Check my Agentic Wallet address and confirm I hold a Binance
-   Agent ID (balanceOf on the official Agent ID contract
-   0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F must be greater than 0).
+1. Check my Agentic Wallet address and confirm I hold ${idPhrase}
+   ${registry} must be greater than 0).
 2. Draft an original Binance Square post for Campaign 001 with the
    hashtags #BinanceWalletHackathon and #AgenticWallet.
 3. Show me the draft. I will publish it myself from my own Square
@@ -33,14 +48,20 @@ Rules: never ask me for a seed phrase, private key, API secret, or
 pairing code. Never enable Secure Auto Sign or skip the preview +
 confirmation step. This website never shows a QR login — sign in
 only through Binance AI Pro or a trusted agent of my own.`;
+}
 
 export function CampaignPage() {
+  // Mode is stable for this component's lifetime: App remounts the page
+  // (key={mode}) whenever the mode changes.
+  const mode = getMode();
+  const prompt = agentPrompt(mode);
   const [wallet, setWallet] = useState("");
   const [squareUrl, setSquareUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [checkAddress, setCheckAddress] = useState("");
   const [checking, setChecking] = useState(false);
   const [eligibility, setEligibility] = useState<Eligibility | null>(null);
@@ -51,6 +72,10 @@ export function CampaignPage() {
   const [submittedStatus, setSubmittedStatus] = useState<string | null>(
     null,
   );
+  // The claim voucher, when the API returns one. Kept in memory only —
+  // never localStorage — and only ever set from a fetchSubmission
+  // response (the API includes it only when status === "approved").
+  const [voucher, setVoucher] = useState<Voucher | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [signature, setSignature] = useState("");
@@ -59,6 +84,14 @@ export function CampaignPage() {
   const [proofError, setProofError] = useState<string | null>(null);
   const pollCount = useRef(0);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Voucher validity, computed at render time (deadline is unix seconds).
+  const voucherExpired =
+    voucher !== null && Date.now() / 1000 > voucher.deadline;
+  const voucherMinutesLeft =
+    voucher !== null
+      ? Math.max(0, Math.floor((voucher.deadline - Date.now() / 1000) / 60))
+      : 0;
 
   // Poll the submission status for up to 60 s after submit (status only
   // changes when an admin reviews it — Phase 4 — so the poll stops on
@@ -71,6 +104,7 @@ export function CampaignPage() {
       try {
         const sub = await fetchSubmission(submittedId);
         setSubmittedStatus(sub.status);
+        setVoucher(sub.voucher ?? null);
         if (sub.status !== "pending" || pollCount.current >= 12) {
           if (pollTimer.current) clearInterval(pollTimer.current);
         }
@@ -106,6 +140,7 @@ export function CampaignPage() {
     try {
       const sub = await fetchSubmission(submittedId);
       setSubmittedStatus(sub.status);
+      setVoucher(sub.voucher ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Status check failed.");
     } finally {
@@ -175,6 +210,7 @@ export function CampaignPage() {
       const checked = await fetchSubmission(sub.id);
       setSubmittedId(checked.id);
       setSubmittedStatus(checked.status);
+      setVoucher(checked.voucher ?? null);
       setMessage(
         `Proof received — submission ${checked.id} is ${checked.status}. An admin will manually review your Square post. Agent ID ownership is verified on-chain before any approval.`,
       );
@@ -189,11 +225,21 @@ export function CampaignPage() {
 
   async function copyPrompt() {
     try {
-      await navigator.clipboard.writeText(AGENT_PROMPT);
+      await navigator.clipboard.writeText(prompt);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+    }
+  }
+
+  async function copyText(text: string, field: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      setCopiedField(null);
     }
   }
 
@@ -281,14 +327,35 @@ export function CampaignPage() {
               {eligibilityError}
             </p>
           )}
+          {mode === "testnet" && (
+            <div className="mt-4 rounded-md border border-line bg-ink px-3 py-2 text-sm text-zinc-200">
+              <p className="font-semibold text-white">
+                Need testnet BNB for gas?
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                The mint transaction on BSC testnet needs a little tBNB for
+                gas. Testnet BNB is free play money — it has no real value.
+              </p>
+              <a
+                href="https://www.bnbchain.org/en/testnet-faucet"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block rounded-md bg-gold px-4 py-2 text-xs font-semibold text-black transition hover:brightness-110"
+              >
+                Get testnet BNB (faucet)
+              </a>
+            </div>
+          )}
         </Card>
       </section>
 
       <section>
-        <SectionTitle>Agent prompt — copy &amp; paste to your own AI agent</SectionTitle>
+        <SectionTitle>
+          Agent prompt — {mode === "testnet" ? "Testnet (demo)" : "Mainnet (real)"} — copy &amp; paste to your own AI agent
+        </SectionTitle>
         <Card>
           <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed text-zinc-200 sm:text-sm">
-            {AGENT_PROMPT}
+            {prompt}
           </pre>
           <div className="mt-4">
             <GoldButton onClick={copyPrompt}>
@@ -436,6 +503,80 @@ export function CampaignPage() {
                 Status changes when an admin reviews the submission (Phase
                 4). This page polls for 60 s after submit.
               </span>
+            </div>
+          )}
+          {submittedStatus === "approved" && voucher && (
+            <div className="mt-4 space-y-3 rounded-md border border-gold/40 bg-gold/10 px-3 py-3 text-sm">
+              <p className="font-semibold text-gold">
+                ✓ Approved — your claim voucher
+              </p>
+              <p className="text-xs text-muted">
+                Chain: {MODES[mode].chainName} ({MODES[mode].chainId}) ·
+                Contract{" "}
+                <span className="break-all font-mono">
+                  {MODES[mode].contractAddress}
+                </span>
+              </p>
+              <p className="text-zinc-200">
+                Campaign {String(voucher.campaignId).padStart(3, "0")} ·
+                Recipient{" "}
+                <span className="break-all font-mono text-xs">
+                  {voucher.recipient}
+                </span>
+              </p>
+              {voucherExpired ? (
+                <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300">
+                  KEDALUWARSA — this voucher can no longer be used. An
+                  approved submission cannot be re-reviewed or re-submitted,
+                  so there is no way to get a new voucher for this campaign
+                  until a re-issue policy exists. Do not try to mint with it.
+                </p>
+              ) : (
+                <p className="text-zinc-200">
+                  Valid for 1 hour from approval — expires{" "}
+                  {new Date(voucher.deadline * 1000).toISOString()} (in about{" "}
+                  {voucherMinutesLeft} minutes). Use it before then: after
+                  expiry the contract rejects the mint.
+                </p>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-muted">Nonce</p>
+                <p className="mt-1 flex flex-wrap items-center gap-2">
+                  <span className="break-all font-mono text-xs text-zinc-200">
+                    {voucher.nonce.slice(0, 18)}…
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copyText(voucher.nonce, "nonce")}
+                    className="rounded-md border border-gold/60 px-2 py-0.5 text-xs font-semibold text-gold transition hover:bg-gold/10"
+                  >
+                    {copiedField === "nonce" ? "Copied ✓" : "Copy full nonce"}
+                  </button>
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted">
+                  Signature — give the full value to your agent
+                </p>
+                <p className="mt-1 break-all font-mono text-xs text-zinc-200">
+                  {voucher.signature}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => copyText(voucher.signature, "signature")}
+                  className="mt-2 rounded-md border border-gold/60 px-2 py-0.5 text-xs font-semibold text-gold transition hover:bg-gold/10"
+                >
+                  {copiedField === "signature"
+                    ? "Copied ✓"
+                    : "Copy signature"}
+                </button>
+              </div>
+              <p className="text-xs text-muted">
+                Give this voucher to your agent; your agent must show you
+                the mint transaction first (chain, contract, recipient, gas)
+                and wait for your explicit approval before executing
+                anything.
+              </p>
             </div>
           )}
           {error && (

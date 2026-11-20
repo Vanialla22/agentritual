@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getMode, MODES, setMode, type Mode } from "./lib/api";
 import { AdminPage } from "./pages/Admin";
 import { CampaignPage } from "./pages/Campaign";
 import { CollectionPage } from "./pages/Collection";
@@ -81,6 +82,15 @@ export function HonestNote({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const [page, setPage] = useState<PageHash>(() => readHash());
+  // Mode state mirrors api.ts (single source of truth): initialized from
+  // getMode() and updated only through setMode(). No separate mode state.
+  const [mode, setModeState] = useState<Mode>(() => getMode());
+
+  function changeMode(next: Mode) {
+    if (next === mode) return;
+    setMode(next);
+    setModeState(next);
+  }
 
   useEffect(() => {
     const onChange = () => setPage(readHash());
@@ -90,13 +100,27 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-ink text-zinc-100">
-      <div className="border-b border-line bg-panel px-4 py-2 text-center text-xs text-muted sm:text-sm">
-        <span className="font-semibold text-gold">DEMO — TESTNET</span>
-        {" — "}
-        The NFT contract is deployed on BSC testnet (chain 97); mainnet
-        (chain 56) is on HOLD — no public mint yet. Nothing on this page is
-        a live transaction unless you approve one yourself.
-      </div>
+      {mode === "testnet" ? (
+        <div className="border-b border-line bg-panel px-4 py-2 text-center text-xs text-muted sm:text-sm">
+          <span className="font-semibold text-gold">DEMO — TESTNET</span>
+          {" — "}
+          The NFT contract is deployed on BSC testnet (chain 97). Try the
+          full quest flow with a Mock Agent ID — no real funds involved.
+          Nothing on this page is a live transaction unless you approve one
+          yourself.
+        </div>
+      ) : (
+        <div className="border-b border-line bg-panel px-4 py-2 text-center text-xs text-muted sm:text-sm">
+          <span className="font-semibold text-gold">
+            MAINNET — METADATA LIVE
+          </span>
+          {" — "}
+          NFT metadata is live on IPFS (baseURI set 20 Nov 2026), but
+          minting via agent has never been tested end-to-end and is not
+          open yet. Nothing on this page is a live transaction unless you
+          approve one yourself.
+        </div>
+      )}
 
       <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5">
         <a href="#home" className="flex items-center gap-3">
@@ -122,9 +146,41 @@ export default function App() {
             </a>
           ))}
         </nav>
+        <div
+          className="flex items-center gap-1 rounded-md border border-line bg-panel p-1 text-sm"
+          role="group"
+          aria-label="Network mode"
+        >
+          {(["testnet", "mainnet"] as const).map((m) => {
+            const available = Boolean(MODES[m].apiUrl);
+            const active = mode === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => changeMode(m)}
+                disabled={!available}
+                title={
+                  !available ? "API belum dikonfigurasi" : undefined
+                }
+                className={`rounded px-3 py-1.5 font-semibold transition ${
+                  active
+                    ? "bg-gold text-black"
+                    : "text-zinc-300 hover:bg-panel-2 hover:text-white"
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                {m === "testnet" ? "Testnet" : "Mainnet"}
+                {!available ? " (API belum dikonfigurasi)" : ""}
+              </button>
+            );
+          })}
+        </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-16">
+      {/* key={mode} remounts the page on mode change: no stale tracker,
+          eligibility, submission, voucher, or admin-token state survives
+          a switch, so mode A's data can never render as mode B's. */}
+      <main key={mode} className="mx-auto max-w-6xl px-4 pb-16">
         {page === "home" && <HomePage />}
         {page === "campaign" && <CampaignPage />}
         {page === "collection" && <CollectionPage />}
@@ -135,6 +191,49 @@ export default function App() {
 
       <footer className="border-t border-line px-4 py-6 text-center text-xs text-muted">
         <p>
+          Mode:{" "}
+          <span className="font-semibold text-gold">
+            {mode === "testnet" ? "Testnet" : "Mainnet"}
+          </span>{" "}
+          — {MODES[mode].chainName} (chain {MODES[mode].chainId}) · Contract{" "}
+          <a
+            className="text-gold underline"
+            href={`${MODES[mode].explorerBase}/address/${MODES[mode].contractAddress}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {MODES[mode].contractAddress}
+          </a>
+        </p>
+        <p className="mt-2">
+          <a
+            className="text-gold underline"
+            href="https://github.com/Vanialla22/agentritual"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub
+          </a>
+          {" · "}
+          <a
+            className="text-gold underline"
+            href="https://www.binance.com/en/square/profile/vanilla22"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Binance Square — Vanilla22
+          </a>
+          {" · "}
+          <a
+            className="text-gold underline"
+            href="https://x.com/vaniabona1"
+            target="_blank"
+            rel="noreferrer"
+          >
+            X — @vaniabona1
+          </a>
+        </p>
+        <p className="mt-2">
           AgentRitual — Agent-Native Social Quest &amp; NFT Mint Platform.
           Built for the Binance Agent ID Hackathon.
         </p>
