@@ -15,11 +15,14 @@
 //   npx tsx src/scripts/test-auto-approve.ts
 //   # ...then the same with AUTO_APPROVE=false for the pending case.
 //
-// The submitting wallet is the testnet DEPLOYER (holds 1 Mock Agent ID);
-// its key is read from ~/.config/agentritual/testnet-deployer.key and
-// never printed. Exits 0 when every case passes, 1 otherwise.
+// The submitting wallet is FRESH each run (the deployer mints it a
+// Mock Agent ID); its key is never stored or printed. It must be
+// fresh: the testnet deployer already minted its one testnet NFT
+// (token #0), so the already-minted guard correctly 409s it — it can
+// no longer submit. Exits 0 when every case passes, 1 otherwise.
 
 import fs from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { ethers } from "ethers";
 import { buildServer } from "../server";
 import { VOUCHER_TYPES } from "../voucher";
@@ -79,7 +82,17 @@ async function main() {
       "utf8",
     )
     .trim();
-  const wallet = new ethers.Wallet(deployerKey);
+  const provider = new ethers.JsonRpcProvider(process.env.BSC_RPC_URL as string);
+  const deployer = new ethers.Wallet(deployerKey, provider);
+  const wallet = ethers.Wallet.createRandom().connect(provider);
+  const registry = new ethers.Contract(
+    MOCK_REGISTRY,
+    ["function mint(address to) returns (uint256)"],
+    deployer,
+  );
+  const mockTx = await registry.mint(wallet.address);
+  const mockRc = await mockTx.wait();
+  if (mockRc?.status !== 1) throw new Error("mock Agent ID mint failed");
 
   const app = await buildServer();
   await app.listen({ host: "127.0.0.1", port: 0 });
@@ -229,6 +242,66 @@ async function main() {
         sub2.res.status === 409,
         String(sub2.res.status),
       );
+      // Resubmit fix (21 Nov 2026): an approved submission whose
+      // voucher has expired no longer blocks a new submission.
+      // Expire the voucher directly in the temp DB, then submit
+      // again with a fresh token — must come back 201 approved
+      // with a NEW voucher (different nonce, fresh deadline).
+      {
+        const tdb = new DatabaseSync(process.env.DATABASE_PATH as string);
+        tdb
+          .prepare("UPDATE vouchers SET deadline = ? WHERE submission_id = ?")
+          .run(Math.floor(Date.now() / 1000) - 60, id);
+        tdb.close();
+      }
+      const ch3 = await jfetch(
+        `/api/auth/challenge?address=${wallet.address}`,
+      );
+      const sig3 = await wallet.signMessage(ch3.json?.message as string);
+      const ver3 = await jfetch("/api/auth/verify", {
+        body: JSON.stringify({
+          address: wallet.address,
+          message: ch3.json?.message,
+          signature: sig3,
+          tag: ch3.json?.tag,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const sub3 = await jfetch("/api/submissions", {
+        body: JSON.stringify({
+          campaignId: "001",
+          proofToken: ver3.json?.proofToken,
+          squareUrl: SQUARE_URL,
+          wallet: wallet.address,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      check(
+        "expired voucher: resubmit 201",
+        sub3.res.status === 201,
+        String(sub3.res.status),
+      );
+      check(
+        "expired voucher: resubmit approved",
+        sub3.json?.status === "approved",
+        String(sub3.json?.status),
+      );
+      const v3 = sub3.json?.voucher as Record<string, unknown> | undefined;
+      check("expired voucher: new voucher issued", !!v3);
+      if (v3 && v) {
+        check(
+          "expired voucher: new nonce differs",
+          v3.nonce !== v.nonce,
+          String(v3.nonce),
+        );
+        check(
+          "expired voucher: new deadline fresh",
+          (v3.deadline as number) > Math.floor(Date.now() / 1000),
+          String(v3.deadline),
+        );
+      }
     } else {
       check(
         "manual mode: status pending",

@@ -595,10 +595,10 @@ export function CampaignPage() {
               </p>
               {voucherExpired ? (
                 <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300">
-                  KEDALUWARSA — this voucher can no longer be used. An
-                  approved submission cannot be re-reviewed or re-submitted,
-                  so there is no way to get a new voucher for this campaign
-                  until a re-issue policy exists. Do not try to mint with it.
+                  KEDALUWARSA — this voucher can no longer be used. Just
+                  submit again — an expired voucher no longer blocks a new
+                  submission, and you will get a fresh voucher. Do not try
+                  to mint with it.
                 </p>
               ) : (
                 <p className="text-zinc-200">

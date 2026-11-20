@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { ethers } from "ethers";
 import type { Db } from "../db";
 import { getAgentIdBalance } from "../agentId";
+import { hasMinted } from "../nft";
 import { consumeProofToken, isProofTokenUsed, verifyProofToken } from "../auth";
 import { appendAuditLog } from "../auditLog";
 import { checkRateLimit, clientIp } from "../rateLimit";
@@ -261,17 +262,59 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
       });
     }
 
-    // One active submission per wallet per campaign.
+    // One active submission per wallet per campaign — with one
+    // exception (21 Nov 2026, resubmit fix): an APPROVED submission
+    // whose voucher has already expired no longer blocks a new
+    // submission. The user just submits again for a fresh voucher;
+    // the old row stays as history. Pending submissions still block
+    // (they await an admin decision — the admin can reject one to
+    // free the wallet), and an approved submission with a live
+    // voucher still blocks (use the voucher you have).
+    // One mint per wallet per campaign is enforced on-chain
+    // (hasMinted) and can never be bypassed by resubmitting — this
+    // handler also refuses an already-minted wallet early (409) so
+    // nobody wastes gas on a mint that must revert.
+    let minted: boolean;
+    try {
+      minted = await hasMinted(Number(campaignId), wallet.toLowerCase());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "RPC error";
+      return reply.status(503).send({
+        error: `mint check unavailable, try again later: ${msg}`,
+      });
+    }
+    if (minted) {
+      return reply.status(409).send({
+        error: "wallet already minted for this campaign",
+      });
+    }
     const existing = await db.get<SubmissionRow>(
       "SELECT * FROM submissions WHERE wallet = ? AND campaign_id = ? AND status IN ('pending', 'approved') LIMIT 1",
       [wallet.toLowerCase(), campaignId],
     );
     if (existing) {
-      return reply.status(409).send({
-        error:
-          "wallet already has an active submission for this campaign",
-        submissionId: existing.id,
-      });
+      let blocks = true;
+      if (existing.status === "approved") {
+        const voucherRow = await db.get<{ deadline: number }>(
+          "SELECT deadline FROM vouchers WHERE submission_id = ?",
+          [existing.id],
+        );
+        // No voucher row = inconsistent state; fail closed (block).
+        // Expired voucher = the old submission no longer blocks.
+        if (
+          voucherRow &&
+          voucherRow.deadline <= Math.floor(Date.now() / 1000)
+        ) {
+          blocks = false;
+        }
+      }
+      if (blocks) {
+        return reply.status(409).send({
+          error:
+            "wallet already has an active submission for this campaign",
+          submissionId: existing.id,
+        });
+      }
     }
 
     const id = randomUUID();

@@ -404,12 +404,15 @@ deploy cost (BNB) = deploy gasUsed × current mainnet gas price (gwei) ÷ 1e9
   has never been executed through BAW (contract calls that ARE proven
   via BAW: ownership accept, signer rotation, `setBaseURI`). Do not claim
   the agent mint path works until a BAW mint succeeds on testnet.
-- **Voucher re-issue policy (blocker before mainnet promo).** A voucher
-  lives 24 hours by default (env MAX_VOUCHER_TTL_SECONDS); if it expires, the submission cannot be re-reviewed
-  (409) and cannot be re-submitted (409), and there is no re-issue
-  endpoint. Decide the policy (and build the endpoint, if any) before
-  promoting mainnet — otherwise an expired voucher locks a user out of
-  the campaign permanently.
+- **Voucher resubmit policy (resolved 21 Nov 2026).** A voucher
+  lives 24 hours by default (env MAX_VOUCHER_TTL_SECONDS). If it
+  expires, the submission no longer blocks a new one: the wallet can
+  simply submit again for a fresh voucher (the old submission stays as
+  history). A wallet that already minted gets 409 "already minted"
+  (checked on-chain via `hasMinted`) — one mint per wallet per campaign
+  is still enforced by the contract and can never be bypassed by
+  resubmitting. Pending submissions still block until the admin decides
+  (approve/reject) — the admin can reject one to free the wallet.
 - **Post-deploy browser verification (step 4.7 checklist).** After the
   Vercel two-env deploy: tracker shows chain 97 / supply 7 on Testnet
   and chain 56 / supply 0 on Mainnet in a real browser; mode switch
