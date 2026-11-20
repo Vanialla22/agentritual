@@ -36,7 +36,7 @@ export function HomePage() {
           Binance Agent ID Hackathon
         </p>
         <h1 className="mx-auto mt-4 max-w-3xl text-4xl font-black leading-tight text-white sm:text-5xl">
-          Your Agent completes the quest. Your Agent ID proves eligibility.
+          Your agent guides the quest. Your Agent ID proves eligibility.
           Your wallet authorizes the mint.
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-base text-muted sm:text-lg">
