@@ -18,27 +18,15 @@ export function CollectionPage() {
 
       <section className="grid gap-4 md:grid-cols-2">
         <Card className="flex flex-col items-center justify-center">
-          <svg
-            viewBox="0 0 200 200"
-            className="h-56 w-56"
-            role="img"
-            aria-label="Genesis Seal artwork (placeholder graphic)"
-          >
-            <circle cx="100" cy="100" r="96" fill="#141416" stroke="#ffd60a" strokeWidth="3" />
-            <circle cx="100" cy="100" r="78" fill="none" stroke="#ffd60a" strokeWidth="1" strokeDasharray="4 6" />
-            <circle cx="100" cy="100" r="58" fill="none" stroke="#ffd60a" strokeWidth="1.5" />
-            <text x="100" y="118" textAnchor="middle" fontSize="52" fontWeight="900" fill="#ffd60a" fontFamily="system-ui, sans-serif">
-              AR
-            </text>
-            <text x="100" y="150" textAnchor="middle" fontSize="11" letterSpacing="3" fill="#9a9aa3" fontFamily="system-ui, sans-serif">
-              GENESIS SEAL
-            </text>
-          </svg>
+          <img
+            src="/genesis-seal.webp"
+            alt="Genesis Seal artwork"
+            className="h-72 w-72 rounded-2xl object-cover sm:h-80 sm:w-80"
+          />
           <p className="mt-3 text-center text-xs text-muted">
-            Final Genesis Seal artwork — in the repo
-            (contracts/metadata/genesis-seal.webp) and pinned on IPFS
-            (Filebase). The mainnet contract baseURI points at the live
-            metadata since 20 Nov 2026.
+            The Genesis Seal artwork — pinned on IPFS (Filebase). The
+            mainnet contract baseURI points at the live metadata since 20
+            Nov 2026.
           </p>
         </Card>
 

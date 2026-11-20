@@ -8,12 +8,15 @@ import { OpenSourcePage } from "./pages/OpenSource";
 import { TrackerPage } from "./pages/Tracker";
 
 const PAGES = [
-  { hash: "home", label: "Home" },
-  { hash: "campaign", label: "Campaign 001" },
-  { hash: "collection", label: "NFT Collection" },
-  { hash: "tracker", label: "Live Mint Tracker" },
-  { hash: "opensource", label: "Open Source" },
-  { hash: "admin", label: "Admin" },
+  { hash: "home", label: "Home", nav: true },
+  { hash: "campaign", label: "Campaign 001", nav: true },
+  { hash: "collection", label: "NFT Collection", nav: true },
+  { hash: "tracker", label: "Live Mint Tracker", nav: true },
+  { hash: "opensource", label: "Open Source", nav: true },
+  // Admin stays a valid page hash (direct #admin link still works) but
+  // is NOT shown in the navigation — casual visitors never see it.
+  // The project admin knows the URL.
+  { hash: "admin", label: "Admin", nav: false },
 ] as const;
 
 type PageHash = (typeof PAGES)[number]["hash"];
@@ -132,7 +135,7 @@ export default function App() {
           </span>
         </a>
         <nav className="flex flex-wrap gap-1 text-sm">
-          {PAGES.map((p) => (
+          {PAGES.filter((p) => p.nav).map((p) => (
             <a
               key={p.hash}
               href={`#${p.hash}`}
