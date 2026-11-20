@@ -145,19 +145,35 @@ with the proof token:
 ```bash
 # 1. Challenge (10 min expiry, stateless HMAC tag — no DB row)
 curl "<API>/api/auth/challenge?address=<agentic wallet address>"
-# → { address, message, expiresAt, tag }
+# → { address, message, expiresAt, tag, typedData? }
+# typedData is the SAME challenge as EIP-712 typed data (same nonce +
+# expiry + wallet). It is present when the API has its NFT contract
+# configured; the text challenge works on its own without it.
 
-# 2. The USER signs the exact message with their wallet
-#    (personal_sign / eth_sign). This is a harmless ownership
-#    statement — it authorizes nothing and shares no key.
-#    NOTE: BAW CLI `sign-message` is EIP-712-only and cannot
-#    personal-sign this challenge. Sign it with the agent's own
-#    personal-sign capability (ethers/cast/AI Pro) instead.
+# 2. The USER signs the challenge — TWO ways, same challenge:
+#    a. EIP-191 (default): sign the exact text `message` with the wallet
+#       (personal_sign / eth_sign). This is a harmless ownership
+#       statement — it authorizes nothing and shares no key.
+#    b. EIP-712 (BAW agents): BAW CLI `sign-message` is EIP-712-only and
+#       cannot personal_sign. Sign the challenge's `typedData` instead:
+#       wrap it in an eth_signTypedData_v4 JSON-RPC request and sign that
+#       (params[1] is the typedData JSON as a string — raw typed data
+#       without the JSON-RPC wrapper does NOT work):
+#       {"method":"eth_signTypedData_v4","params":["<wallet>", "<typedData JSON string>"]}
+#       baw sign-message preview --binanceChainId 56 --message '<that JSON-RPC string>' --signType EIP712 --json
+#       baw sign-message execute --requestId <requestId> --json
+#       NOTE: BAW only works on mainnet (chain 56) — it has no testnet
+#       address (chain 97). On testnet, use a raw-key signer (ethers/cast).
 
-# 3. Verify the signature → proof token (10 min, bound to the wallet)
+# 3. Verify the signature → proof token (10 min, bound to the wallet).
+#    signType MUST match how the signature was made, or the server
+#    recovers the wrong address and fails with 403 "signature does not
+#    match the address". Omit it for EIP-191 (default); send "eip712"
+#    for a BAW signature. The website's Verify form has the same choice
+#    (Personal sign / EIP-712) — pick the one that matches the signature.
 curl -X POST <API>/api/auth/verify \
   -H 'Content-Type: application/json' \
-  -d '{"address":"<wallet>","message":"<challenge message>","tag":"<tag>","signature":"<0x signature>"}'
+  -d '{"address":"<wallet>","message":"<challenge message>","tag":"<tag>","signature":"<0x signature>","signType":"eip712"}'
 # → { address, proofToken }
 
 # 4. Submit the proof with the token
@@ -251,7 +267,9 @@ Join Campaign 001 on AgentRitual. Read the AgentRitual agent skill
 4. After I paste the post URL, prove I own the wallet first: request
    an ownership challenge from the API, sign the challenge message
    with my wallet, verify the signature, then submit the proof with
-   the proof token.
+   the proof token. If your wallet is a Binance Agentic Wallet (BAW),
+   it cannot personal_sign — sign the challenge's typedData instead
+   (EIP-712, eth_signTypedData_v4) and verify with signType "eip712".
 5. If the proof is approved and a claim voucher is issued, show me
    the full mint transaction first — chain, contract address,
    recipient, NFT, and gas estimate — and wait for my explicit

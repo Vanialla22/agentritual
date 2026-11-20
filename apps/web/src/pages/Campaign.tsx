@@ -81,6 +81,14 @@ export function CampaignPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [signature, setSignature] = useState("");
+  // Which signature the user pasted: EIP-191 (personal_sign, default) or
+  // EIP-712 (BAW agents — BAW cannot personal_sign). The verify call must
+  // send the matching signType, or the server recovers the wrong address
+  // (this bit us live on 20 Nov 2026: an EIP-712 signature verified as
+  // EIP-191 always fails with "signature does not match the address").
+  // Switching type clears the pasted signature — a signature made for
+  // one type never verifies as the other.
+  const [signType, setSignType] = useState<"eip191" | "eip712">("eip191");
   const [proofToken, setProofToken] = useState<string | null>(null);
   const [proofBusy, setProofBusy] = useState(false);
   const [proofError, setProofError] = useState<string | null>(null);
@@ -180,6 +188,7 @@ export function CampaignPage() {
         address: challenge.address,
         message: challenge.message,
         signature: signature.trim(),
+        signType,
         tag: challenge.tag,
       });
       setProofToken(res.proofToken);
@@ -394,15 +403,17 @@ export function CampaignPage() {
                 {challenge.message}
               </p>
               <p className="text-xs text-muted">
-                Ask your agent to sign this exact message with your wallet
-                (personal_sign), then paste the signature below. Challenge
-                expires {challenge.expiresAt}.
+                {signType === "eip712"
+                  ? "Sign the typed data below with your wallet (EIP-712), then paste the signature below. Challenge expires "
+                  : "Ask your agent to sign this exact message with your wallet (personal_sign), then paste the signature below. Challenge expires "}
+                {challenge.expiresAt}.
               </p>
-              {challenge.typedData && (
+              {signType === "eip712" && challenge.typedData && (
                 <div className="space-y-1">
                   <p className="text-xs text-muted">
-                    BAW agents: sign this typed data instead (EIP-712), then
-                    verify with signType "eip712".
+                    BAW agents: sign this typed data (EIP-712) via the
+                    eth_signTypedData_v4 JSON-RPC request, then verify with
+                    signType "eip712".
                   </p>
                   <p className="break-all rounded-md border border-line bg-ink px-3 py-2 font-mono text-xs text-zinc-200">
                     {JSON.stringify(challenge.typedData)}
@@ -410,6 +421,34 @@ export function CampaignPage() {
                 </div>
               )}
               <form onSubmit={onVerifySignature} className="space-y-3">
+                <div className="flex gap-4 text-sm text-zinc-200">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="signType"
+                      checked={signType === "eip191"}
+                      onChange={() => {
+                        setSignType("eip191");
+                        setSignature("");
+                      }}
+                      className="accent-yellow-500"
+                    />
+                    Personal sign (EIP-191)
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="signType"
+                      checked={signType === "eip712"}
+                      onChange={() => {
+                        setSignType("eip712");
+                        setSignature("");
+                      }}
+                      className="accent-yellow-500"
+                    />
+                    EIP-712 (BAW)
+                  </label>
+                </div>
                 <input
                   type="text"
                   value={signature}
