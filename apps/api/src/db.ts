@@ -65,6 +65,62 @@ class LocalDb implements Db {
   }
 }
 
+/**
+ * Split a SQL script into single statements.
+ *
+ * Turso's HTTP API rejects multi-statement strings
+ * (`SQL_MANY_STATEMENTS`), while node:sqlite accepts them — so the
+ * Turso adapter must split before executing. Handles `--` line
+ * comments and `;` inside single-quoted literals (incl. `''` escapes).
+ * Statements that are only comments/whitespace are dropped.
+ */
+export function splitStatements(sql: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inString = false;
+  let i = 0;
+  while (i < sql.length) {
+    const ch = sql[i];
+    const next = sql[i + 1];
+    if (inString) {
+      cur += ch;
+      if (ch === "'") {
+        if (next === "'") {
+          cur += next;
+          i += 2;
+          continue;
+        }
+        inString = false;
+      }
+      i++;
+      continue;
+    }
+    if (ch === "'") {
+      inString = true;
+      cur += ch;
+      i++;
+      continue;
+    }
+    if (ch === "-" && next === "-") {
+      // Line comment: skip to (not incl.) the newline.
+      while (i < sql.length && sql[i] !== "\n") i++;
+      continue;
+    }
+    if (ch === ";") {
+      const stmt = cur.trim();
+      if (stmt) out.push(stmt);
+      cur = "";
+      i++;
+      continue;
+    }
+    cur += ch;
+    i++;
+  }
+  const tail = cur.trim();
+  if (tail) out.push(tail);
+  return out;
+}
+
 class TursoDb implements Db {
   private client: Client;
 
@@ -88,7 +144,10 @@ class TursoDb implements Db {
   }
 
   async exec(sql: string): Promise<void> {
-    await this.client.execute(sql);
+    // @libsql/client over HTTP accepts one statement per execute().
+    for (const stmt of splitStatements(sql)) {
+      await this.client.execute(stmt);
+    }
   }
 
   async close(): Promise<void> {
