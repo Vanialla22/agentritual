@@ -118,9 +118,10 @@ export function CampaignPage() {
       ? Math.max(0, Math.floor((voucher.deadline - Date.now() / 1000) / 60))
       : 0;
 
-  // Poll the submission status for up to 60 s after submit (status only
-  // changes when an admin reviews it — Phase 4 — so the poll stops on
-  // its own; the Refresh button below always works).
+  // Poll the submission status for up to 60 s after submit (status
+  // changes automatically on auto-approve, or when an admin reviews it
+  // in manual mode — so the poll stops on its own; the Refresh button
+  // below always works).
   useEffect(() => {
     if (!submittedId) return;
     pollCount.current = 0;
@@ -240,7 +241,7 @@ export function CampaignPage() {
       setMessage(
         checked.status === "approved"
           ? `Proof received and approved automatically — submission ${checked.id}. Your claim voucher is below, valid for 24 hours from approval. Mint before it expires.`
-          : `Proof received — submission ${checked.id} is ${checked.status}. An admin will manually review your Square post. Agent ID ownership is verified on-chain before any approval.`,
+          : `Proof received — submission ${checked.id} is ${checked.status}. The system reviews it automatically — eligibility, wallet ownership, and campaign proof. No manual admin approval is required for qualifying submissions.`,
       );
       setWallet("");
       setSquareUrl("");
@@ -530,8 +531,8 @@ export function CampaignPage() {
               <p className="mt-1 text-xs text-muted">
                 Tempel link postingan Binance Square di sini. Link share
                 dari aplikasi Binance maupun link web juga bisa digunakan.
-                Konten diperiksa oleh human reviewer, bukan otomatis oleh
-                form.
+                Checked automatically — eligibility, wallet ownership, and
+                link format. Nobody judges the content of your post.
               </p>
             </div>
             <button
@@ -569,8 +570,8 @@ export function CampaignPage() {
                 {refreshing ? "Refreshing…" : "Refresh status"}
               </button>
               <span className="text-xs text-muted">
-                Status changes when an admin reviews the submission (Phase
-                4). This page polls for 60 s after submit.
+                Status updates automatically — this page polls for 60 s
+                after submit.
               </span>
             </div>
           )}
@@ -656,12 +657,17 @@ export function CampaignPage() {
         </Card>
         <div className="mt-3">
           <HonestNote>
-            Submissions are stored with status “pending” and the wallet is
-            checked on-chain for an Agent ID before acceptance (Phase 3).
-            Since Phase 4, a submission also requires a wallet-ownership
-            proof (signed challenge, 10 min) — so nobody can submit a proof
-            URL in someone else&apos;s name. Admin review issues the
-            voucher on approval.
+            <span className="font-semibold text-gold">
+              Automatic Submission Approval.
+            </span>
+            <br />
+            Submissions are automatically reviewed by the AgentRitual
+            verification system. Approval is granted when all eligibility,
+            wallet ownership, and campaign proof checks pass. No manual
+            admin approval is required for qualifying submissions. Voucher
+            issuance does not execute a mint transaction. Every mint still
+            requires the user&apos;s explicit approval through their own AI
+            agent.
           </HonestNote>
         </div>
       </section>
