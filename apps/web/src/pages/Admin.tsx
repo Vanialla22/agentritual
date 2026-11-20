@@ -167,9 +167,11 @@ export function AdminPage() {
           Review dashboard
         </h1>
         <p className="mt-3 max-w-3xl text-muted">
-          Admins manually review Square proof submissions and approve or
-          reject them. Approval issues a signed claim voucher bound to the
-          submitter&apos;s wallet.
+          Submissions are approved automatically once the checks pass
+          (AUTO_APPROVE). This panel lists them — and any pending ones,
+          for example when automatic approval was off — and you can
+          still approve or reject pending submissions. Approval issues a
+          signed claim voucher bound to the submitter&apos;s wallet.
         </p>
         {/* Mode badge — values come from MODES[getMode()], the same map the
             API calls use, so this badge can never disagree with the

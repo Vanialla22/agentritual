@@ -4,9 +4,10 @@
 > and verified on BSC testnet (chain 97); the submission + eligibility
 > API is live in this repo. Mainnet deployment has NOT happened — the
 > mainnet NFT contract address below is a placeholder until Phase 5.
-> Admin review and voucher issuance are manual steps (Phase 4): a
-> submission stays `pending` until an admin approves it and signs a
-> claim voucher.
+> Approval is automatic (21 Nov 2026): a submission that passes every
+> automated check is approved immediately and the API signs a claim
+> voucher (AUTO_APPROVE, default on; set AUTO_APPROVE=false to restore
+> manual review).
 
 ## What this skill is for
 
@@ -14,7 +15,7 @@ AgentRitual is an agent-native social quest and NFT mint platform for
 the Binance Agent ID Hackathon. The user asks their own AI agent
 (Binance Agentic Wallet via BAW CLI, or Binance AI Pro) to join
 Campaign 001: prove Agent ID ownership, draft a Binance Square post,
-submit the post URL for manual review, and — once a claim voucher is
+submit the post URL for automatic approval, and — once a claim voucher is
 issued — mint the Genesis Seal NFT.
 
 Campaign 001: max supply 1,000, one NFT per wallet per campaign,
@@ -186,8 +187,9 @@ Without a valid proof token the API refuses the submission (401) —
 so nobody can submit a proof URL in someone else's name. The API
 also validates the URL format (`binance.com/square/post/<id>`) AND
 checks Agent ID ownership on-chain before accepting. A URL alone is
-not proof: an admin reads the post before approving (manual review,
-Phase 4). The response is a submission with status `pending`.
+not proof — but approval is automatic: when the checks pass, the API
+signs a claim voucher immediately and the response is a submission
+with status `approved` (plus the voucher). No one reads the post.
 
 **Single-use:** a challenge verifies exactly once, and a proof token
 backs exactly one successful submission. If a submission fails for
@@ -261,7 +263,22 @@ Join Campaign 001 on AgentRitual. Read the AgentRitual agent skill
    Agent ID (balanceOf on the official Agent ID contract
    0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F must be greater than 0).
 2. Draft an original Binance Square post for Campaign 001 with the
-   hashtags #BinanceWalletHackathon and #AgenticWallet.
+   hashtags #BinanceWalletHackathon and #AgenticWallet. Use this
+   template — fill in [your own line] with one original line in your
+   own words, keep the rest as-is:
+
+   GM/GN, agents! 🤖
+
+   [Your own original line about your day or why you GM — one line,
+   your words, not copied.]
+
+   I just joined AgentRitual — a social quest for Agent ID holders on
+   BNB Chain. Post GM/GN on Square, submit the proof, and mint the
+   Genesis Seal NFT (1,000 max supply, 1 per wallet).
+
+   Try it: https://agentritual.vercel.app
+
+   #BinanceWalletHackathon #AgenticWallet
 3. Show me the draft. I will publish it myself from my own Square
    account.
 4. After I paste the post URL, prove I own the wallet first: request
@@ -270,7 +287,8 @@ Join Campaign 001 on AgentRitual. Read the AgentRitual agent skill
    the proof token. If your wallet is a Binance Agentic Wallet (BAW),
    it cannot personal_sign — sign the challenge's typedData instead
    (EIP-712, eth_signTypedData_v4) and verify with signType "eip712".
-5. If the proof is approved and a claim voucher is issued, show me
+5. If the proof is approved (approval is automatic when the checks
+   pass) and a claim voucher is issued, show me
    the full mint transaction first — chain, contract address,
    recipient, NFT, and gas estimate — and wait for my explicit
    approval before executing anything.
@@ -298,8 +316,10 @@ only through Binance AI Pro or a trusted agent of my own.
 - **Binance AI Pro:** NOT validated from this environment (it needs
   the user's phone + app). The live-test script is in
   `docs/ai-pro-test.md`; status UNVALIDATED until a user runs it.
-- **Voucher issuance is manual** until the Phase 4 admin review
-  flow ships. Do not invent an approval.
+- **Voucher issuance is automatic** (AUTO_APPROVE, default on).
+  The admin panel can still approve or reject submissions that are
+  `pending` (for example when automatic approval was off). Do not
+  invent an approval.
 - **Agent ID verification in the API is read-only** (`balanceOf`).
   Wallet-ownership proof via a signature challenge is Phase 4
   scope (backlog item 1).

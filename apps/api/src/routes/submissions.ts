@@ -7,6 +7,7 @@ import { consumeProofToken, isProofTokenUsed, verifyProofToken } from "../auth";
 import { appendAuditLog } from "../auditLog";
 import { checkRateLimit, clientIp } from "../rateLimit";
 import { config, isAuthorizedCampaign } from "../config";
+import { buildVoucher, type BuiltVoucher } from "../voucher";
 
 export interface SubmissionRow {
   id: string;
@@ -275,6 +276,26 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
 
     const id = randomUUID();
     const createdAt = new Date().toISOString();
+    // Auto-approve (21 Nov 2026, both chains): when enabled (default
+    // on), a submission that passes every automated check is approved
+    // immediately with a signed voucher — no admin review. The voucher
+    // is signed BEFORE the proof token is consumed, so a signing
+    // failure leaves no state behind and the user can retry with a
+    // fresh challenge. When signing is unavailable, fail closed with
+    // 503 (never silently create a pending submission the user cannot
+    // see a reason for). When auto-approve is off (AUTO_APPROVE=false),
+    // the submission is created pending for manual admin review.
+    let voucher: BuiltVoucher | null = null;
+    if (config.autoApprove) {
+      try {
+        voucher = await buildVoucher(wallet.toLowerCase(), Number(campaignId));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "signing failed";
+        return reply.status(503).send({
+          error: `voucher signing failed: ${msg}`,
+        });
+      }
+    }
     // Consume the proof token only now that every other check has
     // passed, so a failed submission (409/503) does not burn it. The
     // UNIQUE constraint on used_proof_tokens is the atomic guard
@@ -286,9 +307,19 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
           "proof token already used — request a new challenge and verify again",
       });
     }
+    const status = voucher ? "approved" : "pending";
     await db.run(
-      "INSERT INTO submissions (id, wallet, square_url, campaign_id, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
-      [id, wallet.toLowerCase(), squareUrl, campaignId, createdAt],
+      "INSERT INTO submissions (id, wallet, square_url, campaign_id, status, created_at, review_note, reviewed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        id,
+        wallet.toLowerCase(),
+        squareUrl,
+        campaignId,
+        status,
+        createdAt,
+        voucher ? "auto-approved" : null,
+        voucher ? createdAt : null,
+      ],
     );
     await appendAuditLog(db, {
       action: "submission_created",
@@ -296,11 +327,47 @@ export function registerSubmissionRoutes(app: FastifyInstance, db: Db) {
       detail: squareUrl,
       submissionId: id,
     });
+    if (voucher) {
+      await db.run(
+        "INSERT INTO vouchers (submission_id, recipient, deadline, nonce, signature, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        [
+          id,
+          wallet.toLowerCase(),
+          voucher.deadline,
+          voucher.nonce,
+          voucher.signature,
+          createdAt,
+        ],
+      );
+      // Audit detail carries the voucher DIGEST, never the signature.
+      await appendAuditLog(db, {
+        action: "submission_auto_approved",
+        actor: "system",
+        detail: `${id} voucher ${voucher.digest}`,
+        submissionId: id,
+      });
+    }
     const row = await db.get<SubmissionRow>(
       "SELECT * FROM submissions WHERE id = ?",
       [id],
     );
-    return reply.status(201).send(row);
+    // When auto-approved, the response carries the claim voucher the
+    // user's agent needs to mint — same shape as GET /api/submissions/:id
+    // for approved submissions, so the web shows it without a refetch.
+    return reply.status(201).send(
+      voucher
+        ? {
+            ...row,
+            voucher: {
+              campaignId: voucher.campaignId,
+              deadline: voucher.deadline,
+              nonce: voucher.nonce,
+              recipient: voucher.recipient,
+              signature: voucher.signature,
+            },
+          }
+        : row,
+    );
   });
 
   app.get("/api/submissions/:id", async (req, reply) => {

@@ -112,3 +112,55 @@ export async function signVoucher(voucher: ClaimVoucher): Promise<string> {
     recipient: voucher.recipient,
   });
 }
+
+export interface BuiltVoucher {
+  campaignId: number;
+  deadline: number;
+  digest: string;
+  nonce: string;
+  recipient: string;
+  signature: string;
+}
+
+/**
+ * Sign a claim voucher for a wallet + campaign and return everything a
+ * caller needs to store it (signature + digest). Pure signing — touches
+ * no database, so callers sign BEFORE consuming a proof token or
+ * inserting a row: a signing failure then leaves no state behind and
+ * the user can retry. Used by the admin review flow and by
+ * auto-approve at submit time; both paths issue the identical voucher.
+ */
+export async function buildVoucher(
+  wallet: string,
+  campaignId: number,
+): Promise<BuiltVoucher> {
+  if (!config.adminSignerKey || !config.nftContractAddress) {
+    throw new Error("voucher signing not configured");
+  }
+  if (!Number.isSafeInteger(campaignId)) {
+    throw new Error("campaign_id is not a valid number");
+  }
+  const deadline = Math.floor(Date.now() / 1000) + MAX_VOUCHER_TTL_SECONDS;
+  const nonce = newVoucherNonce();
+  const signature = await signVoucher({
+    campaignId,
+    deadline,
+    nonce,
+    recipient: wallet,
+  });
+  const domain = getVoucherDomain();
+  const digest = ethers.TypedDataEncoder.hash(domain, VOUCHER_TYPES, {
+    campaignId,
+    deadline,
+    nonce,
+    recipient: wallet,
+  });
+  return {
+    campaignId,
+    deadline,
+    digest,
+    nonce,
+    recipient: wallet,
+    signature,
+  };
+}

@@ -39,6 +39,14 @@ export const config = {
     .map((s) => s.trim())
     .filter(Boolean)
     .map((s) => String(Number(s)).padStart(3, "0")),
+  // Auto-approve (21 Nov 2026): when true (default), a submission that
+  // passes every automated check is approved immediately with a signed
+  // voucher — no admin review. Set AUTO_APPROVE=false to restore manual
+  // review (pending submissions are then decided in the admin panel).
+  // The automated checks are: valid proof token, valid Square URL,
+  // Agent ID on-chain, no duplicate active submission, authorized
+  // campaign. Post CONTENT is not checked by anyone when this is on.
+  autoApprove: process.env.AUTO_APPROVE !== "false",
   // Historical test-mint tx hashes (Phase 2/3/4 e2e test mints: tokens
   // #0, #1, #2). GET /api/admin/mint-audit classifies these as
   // "known-test" instead of anomalies — they predate the voucher flow

@@ -12,10 +12,8 @@ import {
 import { appendAuditLog, verifyAuditLogChain } from "../auditLog";
 import { checkRateLimit, clientIp } from "../rateLimit";
 import {
+  buildVoucher,
   getVoucherDomain,
-  MAX_VOUCHER_TTL_SECONDS,
-  newVoucherNonce,
-  signVoucher,
   VOUCHER_TYPES,
 } from "../voucher";
 
@@ -30,7 +28,10 @@ import {
  *   signs a voucher (deadline ≤ 1 h) and stores it; reject stores the
  *   note. Self-APPROVAL is blocked server-side when ADMIN_WALLET is set
  *   (rejecting your own submission is allowed). Unauthorized campaigns
- *   are refused (400).
+ *   are refused (400). Auto-approve (AUTO_APPROVE, default on) approves
+ *   passing submissions at submit time, so this endpoint mostly decides
+ *   the pending ones left over when auto-approve was off or signing
+ *   was unavailable.
  * - GET  /api/admin/submissions?status=pending — review queue.
  * - GET  /api/admin/audit-log (+ ?limit=&offset=) — hash-chained log.
  * - GET  /api/admin/audit-log/verify (+ ?expectedLatest=&expectedCount=)
@@ -243,6 +244,8 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db) {
     }
 
     // Approve: sign a voucher (deadline capped at 1 h by signVoucher).
+    // Shared with auto-approve (see routes/submissions.ts) via
+    // buildVoucher — both paths issue the identical voucher.
     if (!config.adminSignerKey || !config.nftContractAddress) {
       return reply.status(503).send({
         error: "voucher signing not configured",
@@ -254,27 +257,14 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db) {
         error: "submission campaign_id is not a valid number",
       });
     }
-    const deadline =
-      Math.floor(Date.now() / 1000) + MAX_VOUCHER_TTL_SECONDS;
-    const nonce = newVoucherNonce();
-    let signature: string;
+    let built;
     try {
-      signature = await signVoucher({
-        campaignId,
-        deadline,
-        nonce,
-        recipient: sub.wallet,
-      });
+      built = await buildVoucher(sub.wallet, campaignId);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "signing failed";
       return reply.status(503).send({ error: `voucher signing failed: ${msg}` });
     }
-    const domain = getVoucherDomain();
-    const digest = ethers.TypedDataEncoder.hash(
-      domain,
-      VOUCHER_TYPES,
-      { campaignId, deadline, nonce, recipient: sub.wallet },
-    );
+    const { deadline, nonce, signature, digest } = built;
     await db.run(
       "INSERT INTO vouchers (submission_id, recipient, deadline, nonce, signature, created_at) VALUES (?, ?, ?, ?, ?, ?)",
       [submissionId, sub.wallet.toLowerCase(), deadline, nonce, signature, reviewedAt],

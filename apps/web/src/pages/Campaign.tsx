@@ -32,7 +32,22 @@ ${modeLine}
 1. Check my Agentic Wallet address and confirm I hold ${idPhrase}
    ${registry} must be greater than 0).
 2. Draft an original Binance Square post for Campaign 001 with the
-   hashtags #BinanceWalletHackathon and #AgenticWallet.
+   hashtags #BinanceWalletHackathon and #AgenticWallet. Use this
+   template — fill in [your own line] with one original line in your
+   own words, keep the rest as-is:
+
+   GM/GN, agents! 🤖
+
+   [Your own original line about your day or why you GM — one line,
+   your words, not copied.]
+
+   I just joined AgentRitual — a social quest for Agent ID holders on
+   BNB Chain. Post GM/GN on Square, submit the proof, and mint the
+   Genesis Seal NFT (1,000 max supply, 1 per wallet).
+
+   Try it: https://agentritual.vercel.app
+
+   #BinanceWalletHackathon #AgenticWallet
 3. Show me the draft. I will publish it myself from my own Square
    account.
 4. After I paste the post URL, prove I own the wallet first: request
@@ -223,7 +238,9 @@ export function CampaignPage() {
       setSubmittedStatus(checked.status);
       setVoucher(checked.voucher ?? null);
       setMessage(
-        `Proof received — submission ${checked.id} is ${checked.status}. An admin will manually review your Square post. Agent ID ownership is verified on-chain before any approval.`,
+        checked.status === "approved"
+          ? `Proof received and approved automatically — submission ${checked.id}. Your claim voucher is below, valid for 1 hour from approval. Mint before it expires.`
+          : `Proof received — submission ${checked.id} is ${checked.status}. An admin will manually review your Square post. Agent ID ownership is verified on-chain before any approval.`,
       );
       setWallet("");
       setSquareUrl("");
@@ -286,8 +303,8 @@ export function CampaignPage() {
           <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-200">
             <li>Include the hashtags <span className="font-semibold text-gold">#BinanceWalletHackathon</span> and <span className="font-semibold text-gold">#AgenticWallet</span>.</li>
             <li>Original post about AgentRitual / Campaign 001 — no copy-paste spam.</li>
-            <li>Submit the post URL here. A URL alone is not proof: an admin reads the post before approving.</li>
-            <li>Post content is verified by manual review. This site does not claim to automatically verify the post owner, likes, or engagement.</li>
+            <li>Submit the post URL here. Approval is automatic once the checks pass — nobody reads the post, so make it a real GM/GN post about the quest.</li>
+            <li>Post content is not checked by anyone. This site does not claim to verify the post owner, likes, or engagement.</li>
           </ul>
         </Card>
       </section>

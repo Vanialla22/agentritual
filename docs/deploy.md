@@ -164,6 +164,7 @@ service) and in the owner's password manager.
 | `AUTH_SECRET` | No (falls back to `ADMIN_SESSION_SECRET`) | `ADMIN_SESSION_SECRET` | same rule as session secret | same rule (MUST differ from testnet) |
 | `ADMIN_WALLET` | Yes (self-approval block) | `""` (block inactive + startup warning) | `vanilla.ai` | `vanilla.ai` |
 | `AUTHORIZED_CAMPAIGNS` | No | `001` | `001` | `001` |
+| `AUTO_APPROVE` | No | `true` (auto-approve on; set `false` to restore manual review) | default (on) | default (on) |
 | `KNOWN_TEST_MINT_TX_HASHES` | No | 3 testnet tx hashes (tokens #0–#2) | default (covers testnet test mints) | EMPTY (any mainnet mint without a voucher must show as an anomaly) |
 | `CORS_ORIGIN` | Yes in production | `http://localhost:5173,http://localhost:3000` | `https://agentritual.vercel.app` | `https://agentritual.vercel.app` |
 | `RATE_LIMIT_*` (5 vars) | No | documented Phase 4 limits (5/hr/wallet submissions, 20/hr/IP, 5/15min/IP logins, 60/min/IP eligibility, 10/min/IP challenges) | defaults | defaults |
