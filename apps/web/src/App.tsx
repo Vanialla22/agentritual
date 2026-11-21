@@ -115,13 +115,14 @@ export default function App() {
       ) : (
         <div className="border-b border-line bg-panel px-4 py-2 text-center text-xs text-muted sm:text-sm">
           <span className="font-semibold text-gold">
-            MAINNET — METADATA LIVE
+            MAINNET · METADATA LIVE
           </span>
           {" — "}
-          NFT metadata is live on IPFS (baseURI set 20 Nov 2026), but
-          minting via agent has never been tested end-to-end and is not
-          open yet. Nothing on this page is a live transaction unless you
-          approve one yourself.
+          AgentRitual is deployed on BNB Smart Chain. NFT metadata is
+          live on IPFS. Campaign 001 proof submissions are open.
+          Agent-assisted minting is undergoing final end-to-end
+          validation. Every mint requires your explicit wallet
+          authorization.
         </div>
       )}
 
