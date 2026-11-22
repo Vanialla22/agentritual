@@ -21,10 +21,10 @@ const TESTNET_STEPS = [
 
 const STATUS_ROWS: Array<[string, string, string]> = [
   ["Agent ID ownership check (balanceOf)", "Live", "Read-only check against the configured registry: mock registry on testnet, official Agent ID contract on mainnet."],
-  ["Custom contract call by your agent", "Proven on testnet", "Minting via agent is proven on testnet (live end-to-end demo, 20 Nov 2026, token #7 minted via voucher). On mainnet the first mint (token #0) is done; the product mint flow is in final validation with our first tester — no public user mint via agent has run yet."],
+  ["Custom contract call by your agent", "Proven on testnet", "Minting via agent is proven on testnet (live end-to-end demo, 20 Nov 2026, token #7 minted via voucher). On mainnet the first mint (token #0) is done and the first product mint (token #1) is done — minted 22 Nov 2026 by our first tester. Mainnet minting is open."],
   ["Square post verification", "System approval", "Nobody reads the post — the system approves it once the checks pass. No check claims to verify likes, owner, or engagement."],
   ["Proof submission backend", "Live", "Submissions that pass the checks are approved by the system with a voucher (system approval, default on). Manual review still exists for pending submissions. Both APIs are live on Railway — testnet and mainnet."],
-  ["NFT contract", "Deployed — testnet + mainnet", "ERC-721, max supply 1,000, one per wallet. Owner vanilla.ai. Metadata live on IPFS (baseURI set 20 Nov 2026); minting via agent proven on testnet (20 Nov 2026); on mainnet the first mint (token #0) is done and the product flow is in final validation."],
+  ["NFT contract", "Deployed — testnet + mainnet", "ERC-721, max supply 1,000, one per wallet. Owner vanilla.ai. Metadata live on IPFS (baseURI set 20 Nov 2026); minting via agent proven on testnet (20 Nov 2026) and on mainnet — the first product mint (token #1) is done, 22 Nov 2026."],
   ["Live Mint Tracker", "Live — follows the active mode", "Reads totalSupply + Mint events from the active mode's chain (testnet 97 in Testnet mode, mainnet 56 in Mainnet mode). Switch modes in the header to see the other chain."],
 ];
 
@@ -147,7 +147,7 @@ export function HomePage() {
             deployed on both chains: testnet (chain 97) for the demo, mainnet
             (chain 56) with metadata live on IPFS. Minting via agent is
             proven end-to-end on testnet (live demo, 20 Nov 2026). On
-            mainnet the first mint (token #0) is done and the product mint flow is in final validation. Proof submissions are
+            mainnet the first mint (token #0) is done and the first product mint (token #1) is done — mainnet minting is open. Proof submissions are
             approved by the system once the checks pass.
           </p>
           <div className="mt-4">

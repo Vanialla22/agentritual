@@ -11,12 +11,12 @@ const REAL: string[] = [
   "Mainnet deployment — deployed 19 Nov 2026, tx 0x704dcd77…, block 134.475.521, Sourcify exact_match, owner vanilla.ai.",
   "NFT metadata live on IPFS — image + 1,000 metadata files pinned on Filebase (verified via gateway); mainnet baseURI set 20 Nov 2026, tx 0xa31e44cc….",
   "Live deployment — web on Vercel, APIs on Railway (testnet + mainnet), Turso databases; free tiers.",
+  "First product-flow mainnet mint — token #1 minted 22 Nov 2026 by our first tester via an approved submission and voucher. Needs an approved submission from an Agent ID holder (the owner cannot self-approve).",
   "Single admin wallet (vanilla.ai) — self-approval is blocked; limitation documented in docs/admin-rights.md.",
 ];
 
 const PLANNED: string[] = [
   "Binance AI Pro end-to-end test — not validated yet.",
-  "First mainnet mint — done (token #0, 20 Nov 2026); the product mint flow is in final validation with our first tester. Needs an approved submission from an Agent ID holder (the owner cannot self-approve).",
 ];
 
 export function OpenSourcePage() {
@@ -91,10 +91,9 @@ export function OpenSourcePage() {
           </p>
           <p className="mt-2 text-sm text-muted">
             Both contracts are deployed and Sourcify-verified. Mainnet mint
-            is live — the first mint (token #0) is done and the product
-            flow is in final validation with our first tester. Testnet is
-            the demo chain — see Live Mint Tracker for current minted
-            counts.
+            is open — the first mint (token #0) is done and the first
+            product mint (token #1) is done, 22 Nov 2026. Testnet is the
+            demo chain — see Live Mint Tracker for current minted counts.
           </p>
         </Card>
       </section>

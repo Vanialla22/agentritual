@@ -53,7 +53,7 @@ export function CollectionPage() {
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Mainnet minted</dt>
-                <dd className="font-semibold text-white">1 minted — see Live Mint Tracker</dd>
+                <dd className="font-semibold text-white">2 minted — see Live Mint Tracker</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Testnet (97)</dt>
@@ -101,8 +101,8 @@ export function CollectionPage() {
         verification — both deployments meet that bar. The NFT metadata is
         live on IPFS (baseURI set 20 Nov 2026); minting via agent is
         proven end-to-end on testnet (20 Nov 2026) and the first mainnet
-        mint (token #0) is done — the product flow is in final validation.
-        See Live Mint Tracker for current minted counts.
+        product mint (token #1) is done, 22 Nov 2026 — mainnet minting
+        is open. See Live Mint Tracker for current minted counts.
       </HonestNote>
     </div>
   );

@@ -120,8 +120,8 @@ export default function App() {
           {" — "}
           AgentRitual is deployed on BNB Smart Chain. NFT metadata is
           live on IPFS. Campaign 001 proof submissions are open.
-          Agent-assisted minting is undergoing final end-to-end
-          validation. Every mint requires your explicit wallet
+          Agent-assisted minting is live — the first product mint is
+          done. Every mint requires your explicit wallet
           authorization.
         </div>
       )}

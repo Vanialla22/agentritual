@@ -25,9 +25,9 @@ AgentRitual has moved beyond the drawing-board stage.
 - NFT metadata and artwork hosted on IPFS.
 - Genesis NFT #0 successfully minted by the project owner.
 - Testnet contract and mint workflow tested.
-- First mainnet mint (token #0) is done; the product mint flow is in final validation with our first tester.
+- First mainnet mint (token #0) is done; the first product-flow mint (token #1) is done — minted 22 Nov 2026 by our first tester. Mainnet minting is open.
 
-**Important:** Mainnet minting is live — the first mint is done — but a public mint through the product flow has not run yet. Please don't confuse a successful preview with a completed transaction. Blockchain is very literal about these things.
+**Important:** Mainnet minting is open — the first product-flow mint (token #1) is done. Please don't confuse a successful preview with a completed transaction. Blockchain is very literal about these things.
 
 ---
 
@@ -84,7 +84,7 @@ The Agent ID owner, voucher recipient, and NFT recipient must be the same addres
 
 The campaign has a maximum supply of 1,000 NFTs, with one NFT per wallet per campaign enforced by the smart contract.
 
-Mainnet minting is live — the first mint (token #0) is done and the product mint flow is in final validation with our first tester. Actual mint execution requires the user's explicit approval.
+Mainnet minting is open — the first mint (token #0) is done and the first product-flow mint (token #1) is done, 22 Nov 2026. Actual mint execution requires the user's explicit approval.
 
 ---
 
@@ -297,7 +297,6 @@ We prefer documenting limitations rather than pretending they don't exist.
 - Binance Agentic Wallet does not support BSC testnet (Chain ID 97); testnet mint testing uses Foundry `cast`.
 - BAW supports EIP-712 signing, while the EIP-191 challenge requires a compatible signing method or manual signature flow.
 - BAW transaction previews have a limited lifetime, requiring a fresh preparation handshake.
-- Agent-driven mainnet minting through the product flow has not yet completed a full end-to-end test with a real user (the first mint, token #0, was owner-executed).
 - The backend signer remains a critical trust component and requires careful secret management and rotation.
 - API availability depends on the current Railway hosting arrangement.
 
