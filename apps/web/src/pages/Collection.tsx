@@ -83,7 +83,7 @@ export function CollectionPage() {
             </dl>
           </Card>
           <Card>
-            <SectionTitle>Rules — enforced on-chain (Phase 2)</SectionTitle>
+            <SectionTitle>Rules — enforced on-chain</SectionTitle>
             <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-200">
               <li>Caller must hold a Binance Agent ID (balanceOf &gt; 0 on the registry — official registry on mainnet, mock registry on testnet).</li>
               <li>The voucher recipient, the Agent ID owner wallet, and the minting wallet must be the same address.</li>

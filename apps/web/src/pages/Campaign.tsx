@@ -56,6 +56,9 @@ ${modeLine}
    proof token. If your wallet is a Binance Agentic Wallet (BAW), it
    cannot personal_sign — sign the challenge's typedData instead
    (EIP-712, eth_signTypedData_v4) and verify with signType "eip712".
+   (This website and your agent use the same API — finish the whole
+   flow in one place, either here with your agent or in the form on
+   this page, not both at once.)
 5. If the proof is approved and a claim voucher is issued, show me
    the full mint transaction first — chain, contract address,
    recipient, NFT, and gas estimate — and wait for my explicit
@@ -284,7 +287,7 @@ export function CampaignPage() {
         <p className="mt-3 max-w-3xl text-muted">
           Prove you hold a Binance Agent ID, post about AgentRitual on Binance
           Square, and mint the Genesis Seal NFT. Max supply 1,000 — one NFT
-          per wallet per campaign, enforced by the smart contract (Phase 2),
+          per wallet per campaign, enforced by the smart contract,
           not just by this website.
         </p>
       </section>
@@ -497,6 +500,11 @@ export function CampaignPage() {
 
       <section>
         <SectionTitle>Submit your proof URL</SectionTitle>
+        <p className="mt-2 max-w-3xl text-sm text-muted">
+          Your agent and this page use the same API — complete the flow in
+          one place, either with your agent or in this form, not both at
+          once.
+        </p>
         <Card>
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
@@ -529,8 +537,8 @@ export function CampaignPage() {
                 className="w-full rounded-md border border-line bg-ink px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-gold focus:outline-none"
               />
               <p className="mt-1 text-xs text-muted">
-                Tempel link postingan Binance Square di sini. Link share
-                dari aplikasi Binance maupun link web juga bisa digunakan.
+                Paste your Binance Square post link here. Links shared
+                from the Binance app and links from the web both work.
                 Checked automatically — eligibility, wallet ownership, and
                 link format. Nobody judges the content of your post.
               </p>
