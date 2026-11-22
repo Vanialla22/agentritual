@@ -33,7 +33,9 @@ export const MODES: Record<Mode, ModeInfo> = {
   },
 };
 
-/** Read the stored mode. Invalid / missing values fail closed to testnet. */
+/** Read the stored mode. Invalid / missing values fall back to mainnet:
+    the live product is the default landing; Testnet stays one tap away
+    in the header toggle, and a stored choice always wins. */
 export function readMode(): Mode {
   try {
     const stored = localStorage.getItem(MODE_STORAGE_KEY);
@@ -42,7 +44,7 @@ export function readMode(): Mode {
   } catch {
     // storage unavailable (e.g. private mode) — fall through to default
   }
-  return "testnet";
+  return "mainnet";
 }
 
 let currentMode: Mode = readMode();
