@@ -6,7 +6,7 @@ const STEPS = [
   "Your agent drafts an original Binance Square post for the quest.",
   "You publish the post yourself from your own Binance Square account.",
   "You (or your agent) paste the post URL here as proof.",
-  "Your proof is approved automatically once the checks pass.",
+  "Your proof is approved by the system once the checks pass.",
   "The backend issues a signed claim voucher bound to your wallet.",
   "Your agent shows you the mint transaction — chain, contract, recipient, NFT, gas estimate — and you approve it explicitly. The mint is yours.",
 ];
@@ -15,16 +15,16 @@ const TESTNET_STEPS = [
   "No PC, no wallet connect, no command line — your AI agent does the on-chain work. You post on Binance Square from your phone and talk to your agent.",
   "Your agent holds a Mock Agent ID on BSC testnet (chain 97). Mock IDs are minted by the deployer only for now — ask the admin for one.",
   "Your agent takes the ownership challenge, signs it, and submits your Square post URL with the proof.",
-  "Your proof is approved automatically once the checks pass. Your agent receives a claim voucher, valid for 24 hours.",
+  "Your proof is approved by the system once the checks pass. Your agent receives a claim voucher, valid for 24 hours.",
   "Your agent mints the Genesis Seal NFT on testnet. Free except a little testnet gas — tBNB is free from the faucet on the Campaign page.",
 ];
 
 const STATUS_ROWS: Array<[string, string, string]> = [
   ["Agent ID ownership check (balanceOf)", "Live", "Read-only check against the configured registry: mock registry on testnet, official Agent ID contract on mainnet."],
-  ["Custom contract call by your agent", "Proven on testnet", "Minting via agent is proven on testnet (live end-to-end demo, 20 Nov 2026, token #7 minted via voucher). On mainnet it is untested and not open yet — no user mint via BAW has run yet."],
-  ["Square post verification", "Automatic approval", "Nobody reads the post — approval is automatic once the checks pass. No check claims to verify likes, owner, or engagement."],
-  ["Proof submission backend", "Live", "Submissions that pass the checks are approved automatically with a voucher (AUTO_APPROVE, default on). Manual review still exists for pending submissions. Both APIs are live on Railway — testnet and mainnet."],
-  ["NFT contract", "Deployed — testnet + mainnet", "ERC-721, max supply 1,000, one per wallet. Owner vanilla.ai. Metadata live on IPFS (baseURI set 20 Nov 2026); minting via agent proven on testnet (20 Nov 2026), on mainnet untested and not open yet."],
+  ["Custom contract call by your agent", "Proven on testnet", "Minting via agent is proven on testnet (live end-to-end demo, 20 Nov 2026, token #7 minted via voucher). On mainnet the first mint (token #0) is done; the product mint flow is in final validation with our first tester — no public user mint via agent has run yet."],
+  ["Square post verification", "System approval", "Nobody reads the post — the system approves it once the checks pass. No check claims to verify likes, owner, or engagement."],
+  ["Proof submission backend", "Live", "Submissions that pass the checks are approved by the system with a voucher (system approval, default on). Manual review still exists for pending submissions. Both APIs are live on Railway — testnet and mainnet."],
+  ["NFT contract", "Deployed — testnet + mainnet", "ERC-721, max supply 1,000, one per wallet. Owner vanilla.ai. Metadata live on IPFS (baseURI set 20 Nov 2026); minting via agent proven on testnet (20 Nov 2026); on mainnet the first mint (token #0) is done and the product flow is in final validation."],
   ["Live Mint Tracker", "Live — follows the active mode", "Reads totalSupply + Mint events from the active mode's chain (testnet 97 in Testnet mode, mainnet 56 in Mainnet mode). Switch modes in the header to see the other chain."],
 ];
 
@@ -142,13 +142,13 @@ export function HomePage() {
             </span>{" "}
             and{" "}
             <span className="font-semibold text-gold">#AgenticWallet</span>,
-            submit your post URL for automatic approval, and mint the Genesis Seal
+            submit your post URL for system approval, and mint the Genesis Seal
             NFT — max supply 1,000, one per wallet. The NFT contract is
             deployed on both chains: testnet (chain 97) for the demo, mainnet
             (chain 56) with metadata live on IPFS. Minting via agent is
             proven end-to-end on testnet (live demo, 20 Nov 2026). On
-            mainnet it is untested and not open yet. Proof submissions are
-            approved automatically once the checks pass.
+            mainnet the first mint (token #0) is done and the product mint flow is in final validation. Proof submissions are
+            approved by the system once the checks pass.
           </p>
           <div className="mt-4">
             <GoldButton href="#campaign">Open Campaign 001</GoldButton>

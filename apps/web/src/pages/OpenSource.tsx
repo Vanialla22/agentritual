@@ -16,7 +16,7 @@ const REAL: string[] = [
 
 const PLANNED: string[] = [
   "Binance AI Pro end-to-end test — not validated yet.",
-  "First mainnet mint — not open yet; minting via agent untested. Needs an approved submission from an Agent ID holder (the owner cannot self-approve).",
+  "First mainnet mint — done (token #0, 20 Nov 2026); the product mint flow is in final validation with our first tester. Needs an approved submission from an Agent ID holder (the owner cannot self-approve).",
 ];
 
 export function OpenSourcePage() {
@@ -91,9 +91,10 @@ export function OpenSourcePage() {
           </p>
           <p className="mt-2 text-sm text-muted">
             Both contracts are deployed and Sourcify-verified. Mainnet mint
-            is not open yet — minting via agent has never been tested
-            end-to-end. Testnet is the demo chain — see Live Mint Tracker
-            for current minted counts.
+            is live — the first mint (token #0) is done and the product
+            flow is in final validation with our first tester. Testnet is
+            the demo chain — see Live Mint Tracker for current minted
+            counts.
           </p>
         </Card>
       </section>

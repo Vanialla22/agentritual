@@ -243,8 +243,8 @@ export function CampaignPage() {
       setVoucher(checked.voucher ?? null);
       setMessage(
         checked.status === "approved"
-          ? `Proof received and approved automatically — submission ${checked.id}. Your claim voucher is below, valid for 24 hours from approval. Mint before it expires.`
-          : `Proof received — submission ${checked.id} is ${checked.status}. The system reviews it automatically — eligibility, wallet ownership, and campaign proof. No manual admin approval is required for qualifying submissions.`,
+          ? `Proof received and approved by the system — submission ${checked.id}. Your claim voucher is below, valid for 24 hours from approval. Mint before it expires.`
+          : `Proof received — submission ${checked.id} is ${checked.status}. The system reviews it — eligibility, wallet ownership, and campaign proof. No manual admin approval is required for qualifying submissions.`,
       );
       setWallet("");
       setSquareUrl("");
@@ -666,11 +666,11 @@ export function CampaignPage() {
         <div className="mt-3">
           <HonestNote>
             <span className="font-semibold text-gold">
-              Automatic Submission Approval.
+              System Submission Approval.
             </span>
             <br />
-            Submissions are automatically reviewed by the AgentRitual
-            verification system. Approval is granted when all eligibility,
+            Submissions are reviewed by the AgentRitual
+            verification system. Approval is granted by the system when all eligibility,
             wallet ownership, and campaign proof checks pass. No manual
             admin approval is required for qualifying submissions. Voucher
             issuance does not execute a mint transaction. Every mint still

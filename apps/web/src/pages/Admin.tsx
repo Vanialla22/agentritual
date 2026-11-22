@@ -167,9 +167,9 @@ export function AdminPage() {
           Review dashboard
         </h1>
         <p className="mt-3 max-w-3xl text-muted">
-          Admin only. Submissions are approved automatically once the
-          checks pass (AUTO_APPROVE). This panel lists them — and any
-          pending ones, for example when automatic approval was off —
+          Admin only. Submissions are approved by the system once the
+          checks pass (system approval). This panel lists them — and any
+          pending ones, for example when system approval was off —
           and you can still approve or reject pending submissions.
           Approval issues a signed claim voucher bound to the
           submitter&apos;s wallet.
